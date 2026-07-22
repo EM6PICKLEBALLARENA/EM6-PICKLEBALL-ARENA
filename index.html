@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sistem Tempahan - EM6 Pickleball Arena</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QR Code Generator Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body { 
+            background-color: #f3f4f6; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body class="p-3 sm:p-6 md:p-8">
+
+    <div class="max-w-5xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden p-4 sm:p-6 relative">
+        
+        <!-- Header & Butang Owner -->
+        <div class="flex flex-col sm:flex-row justify-between items-center border-b pb-4 mb-6 gap-4">
+            <div class="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
+                <img src="logo.png" alt="Logo EM6 Pickleball Arena" class="h-16 w-auto object-contain" onerror="this.style.display='none'">
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-black text-gray-800 tracking-tight">🏓 EM6 PICKLEBALL ARENA</h1>
+                    <p class="text-gray-500 text-xs sm:text-sm">Sistem Tempahan Gelanggang & Peralatan Digital</p>
+                </div>
+            </div>
+            <button onclick="openAdminModal()" class="w-full sm:w-auto bg-gray-800 text-white text-xs px-4 py-2.5 rounded-xl hover:bg-gray-700 transition flex items-center justify-center gap-2 shadow-sm font-medium active:scale-95">
+                ⚙️ Panel Owner
+            </button>
+        </div>
+
+        <!-- SEKSYEN STATUS JADUAL COURT & MASA BERWARNA -->
+        <div class="mb-6 p-3 sm:p-4 bg-gray-50 rounded-xl border border-gray-200">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2">
+                <h2 class="text-base sm:text-lg font-bold text-gray-800">📅 Jadual Ketersediaan Gelanggang</h2>
+                <div class="flex items-center gap-3 text-xs font-semibold">
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-emerald-500 rounded-full inline-block"></span> 🟢 Kosong</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 bg-red-500 rounded-full inline-block"></span> 🔴 Tempah</span>
+                </div>
+            </div>
+            
+            <!-- Grid Paparan Petak Masa & Court (Mobile Responsive) -->
+            <div id="visualCourtGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                <!-- Dijana secara dinamik melalui JavaScript -->
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Form Input Tempahan -->
+            <div class="space-y-4">
+                <h2 class="text-lg font-bold text-gray-800 border-b pb-2">1. Pilih Masa & Gelanggang</h2>
+                
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Nama Pelanggan</label>
+                    <input type="text" id="custName" placeholder="Contoh: Ahmad Razak" class="w-full p-3 text-sm border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Nombor WhatsApp</label>
+                    <input type="tel" id="custPhone" placeholder="Contoh: 0123456789" class="w-full p-3 text-sm border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Pilih Gelanggang</label>
+                    <select id="courtSelect" onchange="updateDropdownTimeslots()" class="w-full p-3 text-sm border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white transition">
+                        <!-- Pilihan gelanggang dijana dinamik -->
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Pilih Masa (Sesi 1 Jam)</label>
+                    <select id="timeSlot" onchange="calculateTotal()" class="w-full p-3 text-sm border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white transition">
+                        <!-- Pilihan slot masa dijana dinamik -->
+                    </select>
+                </div>
+
+                <h2 class="text-lg font-bold text-gray-800 border-b pb-2 pt-2">2. Peralatan Tambahan (Add-ons)</h2>
+
+                <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                    <div>
+                        <p class="font-semibold text-sm text-gray-800">Sewa Paddle (2 Pcs)</p>
+                        <p class="text-xs text-gray-500">RM <span id="labelPaddle">5.00</span> / set</p>
+                    </div>
+                    <input type="number" id="paddleQty" value="0" min="0" onchange="calculateTotal()" class="w-16 p-2 text-center text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                </div>
+
+                <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                    <div>
+                        <p class="font-semibold text-sm text-gray-800">Bola Standard</p>
+                        <p class="text-xs text-gray-500">RM <span id="labelBallStd">5.00</span> / pc</p>
+                    </div>
+                    <input type="number" id="ballStdQty" value="0" min="0" onchange="calculateTotal()" class="w-16 p-2 text-center text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                </div>
+
+                <div class="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                    <div>
+                        <p class="font-semibold text-sm text-gray-800">Bola Premium</p>
+                        <p class="text-xs text-gray-500">RM <span id="labelBallPrem">19.00</span> / pc</p>
+                    </div>
+                    <input type="number" id="ballPremQty" value="0" min="0" onchange="calculateTotal()" class="w-16 p-2 text-center text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                </div>
+            </div>
+
+            <!-- Panel Ringkasan Pembayaran & Resit -->
+            <div class="bg-gray-50 p-4 sm:p-6 rounded-2xl border border-gray-200 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-800 border-b pb-2 mb-4">3. Ringkasan Bayaran</h2>
+                    
+                    <div class="space-y-2.5 text-sm text-gray-600">
+                        <div class="flex justify-between">
+                            <span>Sewa Gelanggang:</span>
+                            <span id="courtPriceDisplay" class="font-semibold text-gray-800">RM 0.00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Sewa Paddle:</span>
+                            <span id="paddlePriceDisplay" class="font-semibold text-gray-800">RM 0.00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Bola Standard:</span>
+                            <span id="ballStdPriceDisplay" class="font-semibold text-gray-800">RM 0.00</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Bola Premium:</span>
+                            <span id="ballPremPriceDisplay" class="font-semibold text-gray-800">RM 0.00</span>
+                        </div>
+                        <hr class="my-3 border-gray-300">
+                        <div class="flex justify-between text-base sm:text-lg font-black text-gray-900">
+                            <span>JUMLAH:</span>
+                            <span id="totalPriceDisplay" class="text-blue-600">RM 0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Pilihan Kaedah Pembayaran -->
+                    <div class="mt-4 border-t pt-3">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Kaedah Pembayaran Online</label>
+                        <select id="paymentMethod" onchange="togglePaymentQR()" class="w-full p-3 text-sm border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                            <option value="duitnow">DuitNow QR / Bank Transfer</option>
+                            <option value="tng">Touch 'n Go eWallet</option>
+                        </select>
+                    </div>
+
+                    <!-- Paparan Imbas Kod QR -->
+                    <div id="merchantQrBox" class="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200 text-center">
+                        <p id="qrTitle" class="text-xs font-bold text-gray-700 uppercase mb-2">Imbas Kod QR Untuk Bayar Sebelum Tempah</p>
+                        
+                        <img id="merchantQrImg" src="qr-duitnow.png" alt="Kod QR Pembayaran" class="w-36 h-36 sm:w-40 sm:h-40 mx-auto object-contain bg-white p-2 rounded-xl shadow-sm">
+                        
+                        <div class="mt-3 p-2.5 bg-white rounded-lg border border-blue-100 text-left text-xs space-y-1">
+                            <p class="text-gray-500">Bank / Wallet: <b id="displayBankName" class="text-gray-800">-</b></p>
+                            <p class="text-gray-500">Pemegang: <b id="displayAccName" class="text-gray-800">-</b></p>
+                            <p class="text-gray-500">No. Akaun: <b id="displayAccNo" class="text-blue-700 font-mono text-sm break-all">-</b></p>
+                        </div>
+
+                        <p class="text-xs text-gray-600 mt-2">Sila jelaskan bayaran sebanyak <b id="qrAmountDisplay" class="text-blue-700">RM 0.00</b> dahulu.</p>
+
+                        <div class="mt-3 text-left">
+                            <label class="block text-xs font-bold text-red-600 mb-1">Muat Naik Resit (*Wajib):</label>
+                            <input type="file" id="paymentProof" accept="image/*,.pdf" class="w-full text-xs p-2 bg-white border rounded-lg cursor-pointer">
+                        </div>
+                    </div>
+
+                    <button onclick="generateReceipt()" class="w-full mt-5 bg-green-600 hover:bg-green-700 active:scale-98 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition duration-150 text-sm sm:text-base">
+                        Sahkan Bayaran & Dapatkan Resit
+                    </button>
+                </div>
+
+                <!-- Paparan QR Code & Resit -->
+                <div id="receiptSection" class="hidden mt-6 pt-4 border-t border-dashed border-gray-400 text-center">
+                    <h3 class="font-bold text-gray-800 text-sm">🎟️ RESIT PENGESAHAN TEMPAHAN</h3>
+                    <p id="refNo" class="text-xs text-gray-500 font-mono my-1"></p>
+                    <p id="payMethodDisplay" class="text-xs text-blue-600 font-semibold mb-2"></p>
+                    <div id="qrcode" class="flex justify-center my-3"></div>
+                    <p class="text-xs text-gray-500">Bayaran telah disahkan. Tunjukkan Kod QR ini di kaunter untuk masuk/mengambil alatan.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DASHBOARD KAWALAN OWNER (Mesra Mobile) -->
+    <div id="adminModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 overflow-y-auto">
+        <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <h2 class="text-lg sm:text-xl font-bold text-gray-800">⚙️ Dashboard Owner</h2>
+                <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600 font-bold text-2xl px-2">&times;</button>
+            </div>
+            
+            <!-- Menu Tab Bergelongsor pada Mobile -->
+            <div class="flex border-b mb-4 overflow-x-auto no-scrollbar whitespace-nowrap gap-2 pb-1 text-xs sm:text-sm">
+                <button id="tabHargaBtn" onclick="switchTab('harga')" class="py-2 px-3 font-semibold border-b-2 border-blue-600 text-blue-600">Harga</button>
+                <button id="tabQrBtn" onclick="switchTab('qr')" class="py-2 px-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-blue-600">Akaun & QR</button>
+                <button id="tabCourtBtn" onclick="switchTab('court')" class="py-2 px-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-blue-600">Status Court</button>
+                <button id="tabLaporanBtn" onclick="switchTab('laporan')" class="py-2 px-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-blue-600">Rekod Tempahan</button>
+                <button id="tabSecurityBtn" onclick="switchTab('security')" class="py-2 px-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-blue-600">PIN</button>
+            </div>
+
+            <!-- Tab 1: Harga -->
+            <div id="tabHarga" class="space-y-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-600">Harga Off-Peak (RM/Jam)</label>
+                        <input type="number" id="settingOffPeak" class="w-full p-2.5 border rounded-lg mt-1 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-600">Harga Peak (RM/Jam)</label>
+                        <input type="number" id="settingPeak" class="w-full p-2.5 border rounded-lg mt-1 text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-600">Sewa Paddle (RM/2pcs)</label>
+                        <input type="number" id="settingPaddle" class="w-full p-2.5 border rounded-lg mt-1 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-600">Bola Standard (RM/pc)</label>
+                        <input type="number" id="settingBallStd" class="w-full p-2.5 border rounded-lg mt-1 text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-600">Bola Premium (RM/pc)</label>
+                        <input type="number" id="settingBallPrem" class="w-full p-2.5 border rounded-lg mt-1 text-sm">
+                    </div>
+                </div>
+                <button onclick="saveAdminSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Simpan Tetapan Harga</button>
+            </div>
+
+            <!-- Tab 2: Bank/QR -->
+            <div id="tabQr" class="hidden space-y-3">
+                <div class="p-3 bg-gray-50 border rounded-xl space-y-2">
+                    <h4 class="font-bold text-xs text-gray-700">Maklumat Bank / DuitNow</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input type="text" id="settingBankName" placeholder="Nama Bank" class="p-2 border rounded-lg text-xs">
+                        <input type="text" id="settingBankAccNo" placeholder="No Akaun Bank" class="p-2 border rounded-lg text-xs">
+                    </div>
+                    <input type="text" id="settingBankAccName" placeholder="Nama Pemegang Akaun" class="w-full p-2 border rounded-lg text-xs">
+                    <input type="text" id="settingDuitNowQr" placeholder="Fail Gambar QR" class="w-full p-2 border rounded-lg text-xs">
+                </div>
+
+                <div class="p-3 bg-gray-50 border rounded-xl space-y-2">
+                    <h4 class="font-bold text-xs text-gray-700">Maklumat Touch 'n Go eWallet</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input type="text" id="settingTngAccNo" placeholder="No Telefon TNG" class="p-2 border rounded-lg text-xs">
+                        <input type="text" id="settingTngAccName" placeholder="Nama Pemegang TNG" class="p-2 border rounded-lg text-xs">
+                    </div>
+                    <input type="text" id="settingTngQr" placeholder="Fail Gambar QR" class="w-full p-2 border rounded-lg text-xs">
+                </div>
+
+                <button onclick="saveQrSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Simpan Maklumat Akaun & QR</button>
+            </div>
+
+            <!-- Tab 3: Gelanggang -->
+            <div id="tabCourt" class="hidden space-y-3">
+                <div class="space-y-2">
+                    <label class="flex items-center space-x-3 border p-3 rounded-xl cursor-pointer hover:bg-gray-50">
+                        <input type="checkbox" id="court1Active" class="w-5 h-5 text-blue-600 rounded">
+                        <span class="font-medium text-sm text-gray-700">Gelanggang 1 (Court 1)</span>
+                    </label>
+                    <label class="flex items-center space-x-3 border p-3 rounded-xl cursor-pointer hover:bg-gray-50">
+                        <input type="checkbox" id="court2Active" class="w-5 h-5 text-blue-600 rounded">
+                        <span class="font-medium text-sm text-gray-700">Gelanggang 2 (VIP Court)</span>
+                    </label>
+                    <label class="flex items-center space-x-3 border p-3 rounded-xl cursor-pointer hover:bg-gray-50">
+                        <input type="checkbox" id="court3Active" class="w-5 h-5 text-blue-600 rounded">
+                        <span class="font-medium text-sm text-gray-700">Gelanggang 3 (Court 3)</span>
+                    </label>
+                </div>
+                <button onclick="saveCourtSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Kemaskini Status Gelanggang</button>
+            </div>
+
+            <!-- Tab 4: Laporan (Jadual Menyokong Scroll Mendatar) -->
+            <div id="tabLaporan" class="hidden space-y-3">
+                <div class="flex justify-between items-center bg-blue-50 p-3 rounded-xl">
+                    <span class="font-semibold text-xs sm:text-sm text-blue-800">Jumlah Pendapatan:</span>
+                    <span id="totalRevenue" class="text-base sm:text-lg font-bold text-blue-900">RM 0.00</span>
+                </div>
+
+                <input type="text" id="searchBookingInput" onkeyup="filterBookings()" placeholder="🔍 Cari nama / Ref ID..." class="w-full p-2.5 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500">
+
+                <div class="max-h-60 overflow-x-auto border rounded-xl bg-gray-50">
+                    <table class="w-full text-xs text-left border-collapse min-w-[500px]">
+                        <thead class="bg-gray-200 border-b sticky top-0">
+                            <tr>
+                                <th class="p-2 border-r">Ref ID</th>
+                                <th class="p-2 border-r">Pelanggan</th>
+                                <th class="p-2 border-r">Gelanggang & Masa</th>
+                                <th class="p-2 border-r">Kaedah</th>
+                                <th class="p-2 border-r">Jumlah</th>
+                                <th class="p-2 text-center">Resit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingHistoryTable"></tbody>
+                    </table>
+                </div>
+                <div class="flex justify-between items-center pt-2">
+                    <span class="text-xs text-gray-500">Jumlah Tempahan: <b id="bookingCount">0</b></span>
+                    <button onclick="clearHistory()" class="text-xs text-red-600 hover:underline">Padam Sejarah</button>
+                </div>
+            </div>
+
+            <!-- Tab 5: Keselamatan -->
+            <div id="tabSecurity" class="hidden space-y-3">
+                <div>
+                    <label class="text-xs font-semibold text-gray-600">PIN Baru Owner</label>
+                    <input type="password" id="newPinInput" placeholder="Masukkan 4 angka PIN baru" class="w-full p-2.5 border rounded-lg mt-1 text-sm">
+                </div>
+                <button onclick="updatePin()" class="w-full mt-4 bg-red-600 text-white font-semibold py-3 rounded-xl hover:bg-red-700 active:scale-98">Tukar PIN Owner</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- JavaScript Logik Aplikasi -->
+    <script>
+        const ALL_SLOTS = [
+            { val: "8", label: "08:00 AM - 09:00 AM", type: "offpeak" },
+            { val: "9", label: "09:00 AM - 10:00 AM", type: "offpeak" },
+            { val: "10", label: "10:00 AM - 11:00 AM", type: "offpeak" },
+            { val: "11", label: "11:00 AM - 12:00 PM", type: "offpeak" },
+            { val: "12", label: "12:00 PM - 01:00 PM", type: "offpeak" },
+            { val: "13", label: "01:00 PM - 02:00 PM", type: "offpeak" },
+            { val: "14", label: "02:00 PM - 03:00 PM", type: "offpeak" },
+            { val: "15", label: "03:00 PM - 04:00 PM", type: "offpeak" },
+            { val: "16", label: "04:00 PM - 05:00 PM", type: "offpeak" },
+            { val: "17", label: "05:00 PM - 06:00 PM 🔥", type: "peak" },
+            { val: "18", label: "06:00 PM - 07:00 PM 🔥", type: "peak" },
+            { val: "19", label: "07:00 PM - 08:00 PM 🔥", type: "peak" },
+            { val: "20", label: "08:00 PM - 09:00 PM 🔥", type: "peak" },
+            { val: "21", label: "09:00 PM - 10:00 PM 🔥", type: "peak" },
+            { val: "22", label: "10:00 PM - 11:00 PM 🔥", type: "peak" },
+            { val: "23", label: "11:00 PM - 12:00 AM 🔥", type: "peak" }
+        ];
+
+        let settings = {
+            ownerPin: "1234",
+            offpeakPrice: 30,
+            peakPrice: 40,
+            paddlePrice: 5,
+            ballStdPrice: 5,
+            ballPremPrice: 19,
+            bankName: "Maybank",
+            bankAccNo: "512345678901",
+            bankAccName: "EM6 Pickleball Arena",
+            duitnowQrImg: "qr-duitnow.png",
+            tngAccNo: "0123456789",
+            tngAccName: "EM6 Pickleball Arena",
+            tngQrImg: "qr-tng.png",
+            courts: { court1: true, court2: true, court3: true },
+            bookings: []
+        };
+
+        function loadSettings() {
+            const saved = localStorage.getItem('em6_master_settings');
+            if (saved) {
+                settings = JSON.parse(saved);
+            }
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('labelPaddle').innerText = settings.paddlePrice.toFixed(2);
+            document.getElementById('labelBallStd').innerText = settings.ballStdPrice.toFixed(2);
+            document.getElementById('labelBallPrem').innerText = settings.ballPremPrice.toFixed(2);
+
+            const courtSelect = document.getElementById('courtSelect');
+            courtSelect.innerHTML = "";
+            if (settings.courts.court1) courtSelect.innerHTML += `<option value="Court 1">Gelanggang 1 (Court 1)</option>`;
+            if (settings.courts.court2) courtSelect.innerHTML += `<option value="Court 2 (VIP)">Gelanggang 2 (VIP Court)</option>`;
+            if (settings.courts.court3) courtSelect.innerHTML += `<option value="Court 3">Gelanggang 3 (Court 3)</option>`;
+
+            if (courtSelect.innerHTML === "") {
+                courtSelect.innerHTML = `<option value="">-- Semua Gelanggang Ditutup --</option>`;
+            }
+
+            renderVisualCourtGrid();
+            updateDropdownTimeslots();
+            togglePaymentQR();
+        }
+
+        function isSlotBooked(courtName, timeVal) {
+            return settings.bookings.some(b => b.court === courtName && b.timeVal === timeVal);
+        }
+
+        function renderVisualCourtGrid() {
+            const gridContainer = document.getElementById('visualCourtGrid');
+            gridContainer.innerHTML = "";
+
+            const activeCourts = [];
+            if (settings.courts.court1) activeCourts.push("Court 1");
+            if (settings.courts.court2) activeCourts.push("Court 2 (VIP)");
+            if (settings.courts.court3) activeCourts.push("Court 3");
+
+            if (activeCourts.length === 0) {
+                gridContainer.innerHTML = `<p class="col-span-3 text-center text-gray-500 py-4">Semua gelanggang ditutup buat sementara waktu.</p>`;
+                return;
+            }
+
+            activeCourts.forEach(courtName => {
+                let courtHtml = `
+                    <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="font-bold text-gray-800 text-xs sm:text-sm border-b pb-1 mb-2 text-center bg-gray-100 rounded-lg py-1">
+                            🏟️ ${courtName}
+                        </h3>
+                        <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                `;
+
+                ALL_SLOTS.forEach(slot => {
+                    const booked = isSlotBooked(courtName, slot.val);
+                    if (booked) {
+                        courtHtml += `
+                            <div class="p-2 rounded-lg bg-red-50 border border-red-200 text-red-800 flex justify-between items-center cursor-not-allowed">
+                                <span class="font-medium text-[11px] sm:text-xs">${slot.label}</span>
+                                <span class="bg-red-600 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded font-bold">🔴 BOOKED</span>
+                            </div>
+                        `;
+                    } else {
+                        courtHtml += `
+                            <button onclick="selectSlotFromVisual('${courtName}', '${slot.val}')" class="w-full text-left p-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 flex justify-between items-center transition active:scale-98">
+                                <span class="font-medium text-[11px] sm:text-xs">${slot.label}</span>
+                                <span class="bg-emerald-600 text-white text-[9px] sm:text-[10px] px-1.5 py-0.5 rounded font-bold">🟢 KOSONG</span>
+                            </button>
+                        `;
+                    }
+                });
+
+                courtHtml += `</div></div>`;
+                gridContainer.innerHTML += courtHtml;
+            });
+        }
+
+        function updateDropdownTimeslots() {
+            const court = document.getElementById('courtSelect').value;
+            const timeSelect = document.getElementById('timeSlot');
+            timeSelect.innerHTML = "";
+
+            ALL_SLOTS.forEach(slot => {
+                const booked = isSlotBooked(court, slot.val);
+                const opt = document.createElement('option');
+                opt.value = slot.val;
+                opt.setAttribute('data-type', slot.type);
+
+                if (booked) {
+                    opt.text = `${slot.label} 🔴 (Di-booking)`;
+                    opt.disabled = true;
+                    opt.classList.add('bg-red-100', 'text-red-500');
+                } else {
+                    opt.text = `${slot.label} 🟢 (Kosong)`;
+                }
+                timeSelect.appendChild(opt);
+            });
+
+            calculateTotal();
+        }
+
+        function selectSlotFromVisual(courtName, timeVal) {
+            document.getElementById('courtSelect').value = courtName;
+            updateDropdownTimeslots();
+            document.getElementById('timeSlot').value = timeVal;
+            calculateTotal();
+            alert(`Sesi ${courtName} pada masa pilihan telah dipilih. Sila lengkapkan maklumat anda.`);
+        }
+
+        function calculateTotal() {
+            const timeSelect = document.getElementById('timeSlot');
+            const selectedOption = timeSelect.options[timeSelect.selectedIndex];
+            if (!selectedOption) return 0;
+
+            const isPeak = selectedOption.getAttribute('data-type') === 'peak';
+            const courtPrice = isPeak ? settings.peakPrice : settings.offpeakPrice;
+
+            const paddleQty = parseInt(document.getElementById('paddleQty').value) || 0;
+            const ballStdQty = parseInt(document.getElementById('ballStdQty').value) || 0;
+            const ballPremQty = parseInt(document.getElementById('ballPremQty').value) || 0;
+
+            const paddleTotal = paddleQty * settings.paddlePrice;
+            const ballStdTotal = ballStdQty * settings.ballStdPrice;
+            const ballPremTotal = ballPremQty * settings.ballPremPrice;
+
+            const grandTotal = courtPrice + paddleTotal + ballStdTotal + ballPremTotal;
+
+            document.getElementById('courtPriceDisplay').innerText = `RM ${courtPrice.toFixed(2)}`;
+            document.getElementById('paddlePriceDisplay').innerText = `RM ${paddleTotal.toFixed(2)}`;
+            document.getElementById('ballStdPriceDisplay').innerText = `RM ${ballStdTotal.toFixed(2)}`;
+            document.getElementById('ballPremPriceDisplay').innerText = `RM ${ballPremTotal.toFixed(2)}`;
+            document.getElementById('totalPriceDisplay').innerText = `RM ${grandTotal.toFixed(2)}`;
+
+            const qrAmountDisplay = document.getElementById('qrAmountDisplay');
+            if (qrAmountDisplay) {
+                qrAmountDisplay.innerText = `RM ${grandTotal.toFixed(2)}`;
+            }
+
+            return grandTotal;
+        }
+
+        function togglePaymentQR() {
+            const method = document.getElementById('paymentMethod').value;
+            const qrImg = document.getElementById('merchantQrImg');
+            const qrTitle = document.getElementById('qrTitle');
+            const grandTotal = calculateTotal();
+
+            document.getElementById('qrAmountDisplay').innerText = `RM ${grandTotal.toFixed(2)}`;
+
+            if (method === 'duitnow') {
+                qrTitle.innerText = "Imbas QR DuitNow / Bank Transfer";
+                qrImg.src = settings.duitnowQrImg || "qr-duitnow.png";
+                
+                document.getElementById('displayBankName').innerText = settings.bankName || "Maybank";
+                document.getElementById('displayAccName').innerText = settings.bankAccName || "EM6 Pickleball Arena";
+                document.getElementById('displayAccNo').innerText = settings.bankAccNo || "-";
+
+            } else if (method === 'tng') {
+                qrTitle.innerText = "Imbas QR Touch 'n Go eWallet";
+                qrImg.src = settings.tngQrImg || "qr-tng.png";
+
+                document.getElementById('displayBankName').innerText = "Touch 'n Go eWallet";
+                document.getElementById('displayAccName').innerText = settings.tngAccName || "EM6 Pickleball Arena";
+                document.getElementById('displayAccNo').innerText = settings.tngAccNo || "-";
+            }
+        }
+
+        function openAdminModal() {
+            const inputPin = prompt("Masukkan PIN Owner:");
+            if (inputPin === settings.ownerPin) {
+                document.getElementById('settingOffPeak').value = settings.offpeakPrice;
+                document.getElementById('settingPeak').value = settings.peakPrice;
+                document.getElementById('settingPaddle').value = settings.paddlePrice;
+                document.getElementById('settingBallStd').value = settings.ballStdPrice;
+                document.getElementById('settingBallPrem').value = settings.ballPremPrice;
+
+                document.getElementById('settingBankName').value = settings.bankName || "";
+                document.getElementById('settingBankAccNo').value = settings.bankAccNo || "";
+                document.getElementById('settingBankAccName').value = settings.bankAccName || "";
+                document.getElementById('settingDuitNowQr').value = settings.duitnowQrImg || "";
+
+                document.getElementById('settingTngAccNo').value = settings.tngAccNo || "";
+                document.getElementById('settingTngAccName').value = settings.tngAccName || "";
+                document.getElementById('settingTngQr').value = settings.tngQrImg || "";
+
+                document.getElementById('court1Active').checked = settings.courts.court1;
+                document.getElementById('court2Active').checked = settings.courts.court2;
+                document.getElementById('court3Active').checked = settings.courts.court3;
+
+                renderReport();
+                document.getElementById('adminModal').classList.remove('hidden');
+            } else if (inputPin !== null) {
+                alert("PIN Salah!");
+            }
+        }
+
+        function closeAdminModal() {
+            document.getElementById('adminModal').classList.add('hidden');
+        }
+
+        function switchTab(tabName) {
+            ['harga', 'qr', 'court', 'laporan', 'security'].forEach(t => {
+                const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+                const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn');
+                if (el) el.classList.add('hidden');
+                if (btn) {
+                    btn.classList.remove('border-blue-600', 'text-blue-600');
+                    btn.classList.add('border-transparent', 'text-gray-500');
+                }
+            });
+            
+            const activeEl = document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+            const activeBtn = document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Btn');
+            if (activeEl) activeEl.classList.remove('hidden');
+            if (activeBtn) {
+                activeBtn.classList.remove('border-transparent', 'text-gray-500');
+                activeBtn.classList.add('border-blue-600', 'text-blue-600');
+            }
+        }
+
+        function saveAdminSettings() {
+            settings.offpeakPrice = parseFloat(document.getElementById('settingOffPeak').value) || 0;
+            settings.peakPrice = parseFloat(document.getElementById('settingPeak').value) || 0;
+            settings.paddlePrice = parseFloat(document.getElementById('settingPaddle').value) || 0;
+            settings.ballStdPrice = parseFloat(document.getElementById('settingBallStd').value) || 0;
+            settings.ballPremPrice = parseFloat(document.getElementById('settingBallPrem').value) || 0;
+
+            saveAndSync();
+            alert("Tetapan Harga Berjaya Disimpan!");
+        }
+
+        function saveQrSettings() {
+            settings.bankName = document.getElementById('settingBankName').value || "Maybank";
+            settings.bankAccNo = document.getElementById('settingBankAccNo').value || "";
+            settings.bankAccName = document.getElementById('settingBankAccName').value || "";
+            settings.duitnowQrImg = document.getElementById('settingDuitNowQr').value || "qr-duitnow.png";
+
+            settings.tngAccNo = document.getElementById('settingTngAccNo').value || "";
+            settings.tngAccName = document.getElementById('settingTngAccName').value || "";
+            settings.tngQrImg = document.getElementById('settingTngQr').value || "qr-tng.png";
+
+            saveAndSync();
+            togglePaymentQR();
+            alert("Maklumat Akaun & QR Berjaya Disimpan!");
+        }
+
+        function saveCourtSettings() {
+            settings.courts.court1 = document.getElementById('court1Active').checked;
+            settings.courts.court2 = document.getElementById('court2Active').checked;
+            settings.courts.court3 = document.getElementById('court3Active').checked;
+
+            saveAndSync();
+            alert("Status Gelanggang Dikemaskini!");
+        }
+
+        function updatePin() {
+            const newPin = document.getElementById('newPinInput').value;
+            if (newPin.length >= 4) {
+                settings.ownerPin = newPin;
+                saveAndSync();
+                alert("PIN Owner Berjaya Ditukar!");
+                document.getElementById('newPinInput').value = "";
+            } else {
+                alert("Sila masukkan sekurang-kurangnya 4 angka PIN.");
+            }
+        }
+
+        function saveAndSync() {
+            localStorage.setItem('em6_master_settings', JSON.stringify(settings));
+            updateUI();
+        }
+
+        function renderReport(filterText = "") {
+            const tbody = document.getElementById('bookingHistoryTable');
+            tbody.innerHTML = "";
+            let total = 0;
+            let count = 0;
+
+            const filteredBookings = settings.bookings.filter(b => 
+                b.nama.toLowerCase().includes(filterText.toLowerCase()) || 
+                b.ref.toLowerCase().includes(filterText.toLowerCase())
+            );
+
+            if (filteredBookings.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">Tiada rekod tempahan.</td></tr>`;
+            } else {
+                filteredBookings.forEach(b => {
+                    total += b.jumlahRaw;
+                    count++;
+                    
+                    const proofBtn = b.buktiData 
+                        ? `<a href="${b.buktiData}" target="_blank" class="text-blue-600 underline text-xs font-semibold">📁 Resit</a>`
+                        : `<span class="text-gray-400 font-mono text-[10px]">${b.buktiBayaran || 'Tiada Fail'}</span>`;
+
+                    tbody.innerHTML += `
+                        <tr class="border-b hover:bg-gray-100">
+                            <td class="p-2 font-mono font-bold text-gray-700 border-r">${b.ref}</td>
+                            <td class="p-2 border-r">
+                                <b>${b.nama}</b><br>
+                                <span class="text-gray-500 font-mono text-[10px]">${b.phone || '-'}</span>
+                            </td>
+                            <td class="p-2 border-r">
+                                <span>${b.court}</span><br>
+                                <span class="text-[10px] text-gray-500">${b.masa || '-'}</span>
+                            </td>
+                            <td class="p-2 uppercase text-[10px] font-semibold border-r">${b.kaedah || 'ONLINE'}</td>
+                            <td class="p-2 font-bold text-green-600 border-r">RM ${b.jumlahRaw.toFixed(2)}</td>
+                            <td class="p-2 text-center">${proofBtn}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('totalRevenue').innerText = `RM ${total.toFixed(2)}`;
+            document.getElementById('bookingCount').innerText = count;
+        }
+
+        function filterBookings() {
+            const text = document.getElementById('searchBookingInput').value;
+            renderReport(text);
+        }
+
+        function clearHistory() {
+            if (confirm("Adakah anda pasti mahu memadam semua rekod tempahan?")) {
+                settings.bookings = [];
+                saveAndSync();
+                renderReport();
+            }
+        }
+
+        function generateReceipt() {
+            const name = document.getElementById('custName').value;
+            const phone = document.getElementById('custPhone').value;
+            const court = document.getElementById('courtSelect').value;
+            const timeSelect = document.getElementById('timeSlot');
+            const timeVal = timeSelect.value;
+            const payMethod = document.getElementById('paymentMethod').value;
+            const paymentProofInput = document.getElementById('paymentProof');
+            const paymentProof = paymentProofInput.files[0];
+
+            if (!court) {
+                alert("Tiada gelanggang dibuka untuk tempahan pada masa ini.");
+                return;
+            }
+
+            if (!name || !phone) {
+                alert("Sila isi Nama dan Nombor WhatsApp anda.");
+                return;
+            }
+
+            if (isSlotBooked(court, timeVal)) {
+                alert("Maaf, gelanggang dan masa ini telah ditempah oleh pelanggan lain!");
+                return;
+            }
+
+            if (!paymentProof) {
+                alert("Sila muat naik bukti pembayaran (resit/tangkapan skrin) terlebih dahulu!");
+                return;
+            }
+
+            const totalAmount = calculateTotal();
+            const timeText = timeSelect.options[timeSelect.selectedIndex].text;
+            const randomID = "EM6-" + Math.floor(100000 + Math.random() * 900000);
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const proofDataUrl = e.target.result;
+
+                settings.bookings.push({
+                    ref: randomID,
+                    nama: name,
+                    phone: phone,
+                    court: court,
+                    timeVal: timeVal,
+                    masa: timeText,
+                    kaedah: payMethod,
+                    jumlahRaw: totalAmount,
+                    buktiBayaran: paymentProof.name,
+                    buktiData: proofDataUrl
+                });
+
+                saveAndSync();
+
+                document.getElementById('receiptSection').classList.remove('hidden');
+                document.getElementById('refNo').innerText = "NO. RUJUKAN: " + randomID;
+                document.getElementById('payMethodDisplay').innerText = "KAEDAH BAYARAN: " + payMethod.toUpperCase() + " (SUDAH DIBAYAR)";
+
+                const qrData = JSON.stringify({
+                    ref: randomID,
+                    nama: name,
+                    court: court,
+                    masa: timeText,
+                    jumlah: "RM " + totalAmount.toFixed(2),
+                    kaedah: payMethod.toUpperCase(),
+                    status: "PAID - BUKTI DILAMPIRKAN"
+                });
+
+                document.getElementById('qrcode').innerHTML = "";
+                new QRCode(document.getElementById("qrcode"), {
+                    text: qrData,
+                    width: 128,
+                    height: 128
+                });
+
+                alert("Bayaran Berjaya Disahkan & Tempahan Diterima!");
+            };
+
+            reader.readAsDataURL(paymentProof);
+        }
+
+        // Jalankan aplikasi
+        loadSettings();
+    </script>
+</body>
+</html>
