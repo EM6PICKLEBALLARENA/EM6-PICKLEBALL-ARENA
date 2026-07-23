@@ -533,45 +533,46 @@
 
         function calculateTotal() {
             const timeSelect = document.getElementById('timeSlot');
-            const selectedOption = timeSelect.options[timeSelect.selectedIndex];
-            
-            let courtPrice = 0;
-            if (selectedOption && !selectedOption.disabled) {
-                const isPeak = selectedOption.getAttribute('data-type') === 'peak';
-                courtPrice = isPeak ? settings.peakPrice : settings.offpeakPrice;
+            if (!timeSelect.value) {
+                document.getElementById('courtPriceDisplay').innerText = "RM 0.00";
+                document.getElementById('totalPriceDisplay').innerText = "RM 0.00";
+                document.getElementById('qrAmountDisplay').innerText = "RM 0.00";
+                return;
             }
+
+            const selectedOpt = timeSelect.options[timeSelect.selectedIndex];
+            const isPeak = selectedOpt ? selectedOpt.getAttribute('data-type') === 'peak' : false;
+            const courtPrice = isPeak ? settings.peakPrice : settings.offpeakPrice;
 
             const paddleQty = parseInt(document.getElementById('paddleQty').value) || 0;
             const ballStdQty = parseInt(document.getElementById('ballStdQty').value) || 0;
             const ballPremQty = parseInt(document.getElementById('ballPremQty').value) || 0;
 
-            const paddleTotal = paddleQty * settings.paddlePrice;
-            const ballStdTotal = ballStdQty * settings.ballStdPrice;
-            const ballPremTotal = ballPremQty * settings.ballPremPrice;
+            const paddleTot = paddleQty * settings.paddlePrice;
+            const ballStdTot = ballStdQty * settings.ballStdPrice;
+            const ballPremTot = ballPremQty * settings.ballPremPrice;
 
-            const total = courtPrice + paddleTotal + ballStdTotal + ballPremTotal;
+            const total = courtPrice + paddleTot + ballStdTot + ballPremTot;
 
             document.getElementById('courtPriceDisplay').innerText = `RM ${courtPrice.toFixed(2)}`;
-            document.getElementById('paddlePriceDisplay').innerText = `RM ${paddleTotal.toFixed(2)}`;
-            document.getElementById('ballStdPriceDisplay').innerText = `RM ${ballStdTotal.toFixed(2)}`;
-            document.getElementById('ballPremPriceDisplay').innerText = `RM ${ballPremTotal.toFixed(2)}`;
+            document.getElementById('paddlePriceDisplay').innerText = `RM ${paddleTot.toFixed(2)}`;
+            document.getElementById('ballStdPriceDisplay').innerText = `RM ${ballStdTot.toFixed(2)}`;
+            document.getElementById('ballPremPriceDisplay').innerText = `RM ${ballPremTot.toFixed(2)}`;
             document.getElementById('totalPriceDisplay').innerText = `RM ${total.toFixed(2)}`;
             document.getElementById('qrAmountDisplay').innerText = `RM ${total.toFixed(2)}`;
-
-            return total;
         }
 
         function togglePaymentQR() {
             const method = document.getElementById('paymentMethod').value;
-            const qrImg = document.getElementById('merchantQrImg');
-            
             if (method === 'duitnow') {
-                qrImg.src = settings.duitnowQrImg;
+                document.getElementById('qrTitle').innerText = "Imbas DuitNow QR / Pindahan Bank";
+                document.getElementById('merchantQrImg').src = settings.duitnowQrImg;
                 document.getElementById('displayBankName').innerText = settings.bankName;
                 document.getElementById('displayAccName').innerText = settings.bankAccName;
                 document.getElementById('displayAccNo').innerText = settings.bankAccNo;
             } else {
-                qrImg.src = settings.tngQrImg;
+                document.getElementById('qrTitle').innerText = "Imbas Touch 'n Go eWallet QR";
+                document.getElementById('merchantQrImg').src = settings.tngQrImg;
                 document.getElementById('displayBankName').innerText = "Touch 'n Go eWallet";
                 document.getElementById('displayAccName').innerText = settings.tngAccName;
                 document.getElementById('displayAccNo').innerText = settings.tngAccNo;
@@ -581,63 +582,61 @@
         function generateReceipt() {
             const name = document.getElementById('custName').value.trim();
             const phone = document.getElementById('custPhone').value.trim();
-            const court = document.getElementById('courtSelect').value;
             const date = document.getElementById('bookingDate').value;
             const day = document.getElementById('bookingDay').value;
-            const timeSelect = document.getElementById('timeSlot');
-            const proof = document.getElementById('paymentProof').files.length;
+            const court = document.getElementById('courtSelect').value;
+            const timeSlotVal = document.getElementById('timeSlot').value;
+            const proofInput = document.getElementById('paymentProof');
 
-            if (!name || !phone) {
-                alert("Sila isi Nama dan Nombor WhatsApp anda.");
+            if (!name || !phone || !date || !court || !timeSlotVal) {
+                alert("Sila lengkapkan maklumat pelanggan, tarikh, gelanggang dan masa.");
                 return;
             }
 
-            if (!court) {
-                alert("Sila pilih gelanggang yang sah.");
+            if (!proofInput.files || proofInput.files.length === 0) {
+                alert("Sila muat naik bukti resit bayaran terlebih dahulu!");
                 return;
             }
 
-            if (!timeSelect.value || timeSelect.options[timeSelect.selectedIndex].disabled) {
-                alert("Sila pilih slot masa yang belum ditempah.");
+            if (isSlotBooked(court, timeSlotVal, date)) {
+                alert("Maaf, slot masa ini baru sahaja ditempah. Sila pilih masa/gelanggang lain.");
                 return;
             }
 
-            if (proof === 0) {
-                alert("Sila muat naik bukti resit bayaran anda terlebih dahulu.");
-                return;
-            }
-
-            const total = calculateTotal();
-            const timeLabel = timeSelect.options[timeSelect.selectedIndex].text.replace(/ 🟢 \(Kosong\)| 🔴 \(Di-booking\)/g, '');
-            const refID = "EM6-" + Math.floor(100000 + Math.random() * 900000);
-            const methodText = document.getElementById('paymentMethod').value === 'duitnow' ? 'DuitNow / Bank Transfer' : 'TNG eWallet';
+            const slotObj = ALL_SLOTS.find(s => s.val === timeSlotVal);
+            const refNo = "EM6-" + Math.floor(100000 + Math.random() * 900000);
+            const methodText = document.getElementById('paymentMethod').value === 'duitnow' ? 'DuitNow / Bank Transfer' : 'Touch n Go eWallet';
+            const totalText = document.getElementById('totalPriceDisplay').innerText;
 
             const newBooking = {
-                refID,
-                name,
-                phone,
-                court,
-                timeVal: timeSelect.value,
-                timeLabel,
+                refNo: refNo,
+                custName: name,
+                custPhone: phone,
                 bookingDate: date,
                 bookingDay: day,
+                court: court,
+                timeVal: timeSlotVal,
+                timeLabel: slotObj ? slotObj.label : "",
+                paddleQty: document.getElementById('paddleQty').value,
+                ballStdQty: document.getElementById('ballStdQty').value,
+                ballPremQty: document.getElementById('ballPremQty').value,
                 method: methodText,
-                total,
+                total: totalText,
                 status: "Lunas"
             };
 
-            lastBookingData = newBooking;
             settings.bookings.push(newBooking);
             saveMasterSettings();
+            lastBookingData = newBooking;
 
-            // Papar Resit
-            document.getElementById('refNo').innerText = `Ref No: ${refID}`;
-            document.getElementById('payMethodDisplay').innerText = `Kaedah: ${methodText} | RM ${total.toFixed(2)}`;
-            
+            // Kemaskini Paparan Resit
+            document.getElementById('refNo').innerText = `No. Rujukan: ${refNo}`;
+            document.getElementById('payMethodDisplay').innerText = `Kaedah: ${methodText} (${totalText})`;
+
             const qrContainer = document.getElementById('qrcode');
             qrContainer.innerHTML = "";
             new QRCode(qrContainer, {
-                text: `REF:${refID}|NAME:${name}|COURT:${court}|DATE:${date}|TIME:${timeLabel}`,
+                text: JSON.stringify({ ref: refNo, name: name, date: date, court: court, time: slotObj ? slotObj.label : "" }),
                 width: 128,
                 height: 128
             });
@@ -645,40 +644,39 @@
             document.getElementById('receiptSection').classList.remove('hidden');
             renderVisualCourtGrid();
             updateDropdownTimeslots();
-            
-            alert("Tempahan berjaya disahkan! Sila klik butang di bawah untuk menghantar resit ke WhatsApp Owner.");
+            alert("Bayaran disahkan! Resit dan Kod QR anda telah dijana.");
         }
 
-        // HANTAR RESIT TERUS KE WHATSAPP OWNER (0179610108)
         function sendToWhatsappOwner() {
             if (!lastBookingData) {
-                alert("Tiada maklumat tempahan terkini.");
+                alert("Tiada rekod tempahan ditemui.");
                 return;
             }
 
-            const b = lastBookingData;
-            const message = `*TEMPAHAN BARU EM6 PICKLEBALL ARENA* 🏓\n\n` +
-                `*Ref ID:* ${b.refID}\n` +
-                `*Nama:* ${b.name}\n` +
-                `*No Tel:* ${b.phone}\n` +
-                `*Tarikh:* ${b.bookingDate} (${b.bookingDay})\n` +
-                `*Gelanggang:* ${b.court}\n` +
-                `*Masa:* ${b.timeLabel}\n` +
-                `*Jumlah Bayaran:* RM ${b.total.toFixed(2)}\n` +
-                `*Kaedah Bayaran:* ${b.method}\n\n` +
-                `_Saya telah menyertakan bukti pembayaran di bawah:_`;
+            const msg = `*PENGESAHAN TEMPAHAN EM6 ARENA*\n` +
+                        `------------------------------------\n` +
+                        `*No. Rujukan:* ${lastBookingData.refNo}\n` +
+                        `*Nama:* ${lastBookingData.custName}\n` +
+                        `*Telefon:* ${lastBookingData.custPhone}\n` +
+                        `*Tarikh:* ${lastBookingData.bookingDate} (${lastBookingData.bookingDay})\n` +
+                        `*Gelanggang:* ${lastBookingData.court}\n` +
+                        `*Masa:* ${lastBookingData.timeLabel}\n` +
+                        `*Add-ons:* Paddle (${lastBookingData.paddleQty}), Bola Std (${lastBookingData.ballStdQty}), Bola Prem (${lastBookingData.ballPremQty})\n` +
+                        `*Jumlah Bayaran:* ${lastBookingData.total}\n` +
+                        `*Kaedah:* ${lastBookingData.method}\n` +
+                        `------------------------------------\n` +
+                        `Saya telah melampirkan resit pembayaran. Sila sahkan tempahan saya. Terima kasih!`;
 
-            const encodedMessage = encodeURIComponent(message);
-            const whatsappUrl = `https://wa.me/${OWNER_WHATSAPP}?text=${encodedMessage}`;
-            window.open(whatsappUrl, '_blank');
+            const url = `https://wa.me/${OWNER_WHATSAPP}?text=${encodeURIComponent(msg)}`;
+            window.open(url, '_blank');
         }
 
-        /* --- DASHBOARD OWNER CONTROL LOGIC --- */
+        /* LOGIK OWNER DASHBOARD */
         function openAdminModal() {
-            const pin = prompt("Masukkan PIN Owner:");
+            const pin = prompt("Masukkan 4 Angka PIN Owner:");
             if (pin === settings.ownerPin) {
-                document.getElementById('adminModal').classList.remove('hidden');
                 populateAdminFields();
+                document.getElementById('adminModal').classList.remove('hidden');
             } else if (pin !== null) {
                 alert("PIN Salah!");
             }
@@ -691,18 +689,20 @@
         function switchTab(tabName) {
             const tabs = ['harga', 'qr', 'court', 'laporan', 'security'];
             tabs.forEach(t => {
-                const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
-                const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn');
-                if (t === tabName) {
-                    el.classList.remove('hidden');
-                    btn.classList.add('border-blue-600', 'text-blue-600');
-                    btn.classList.remove('border-transparent', 'text-gray-500');
-                } else {
-                    el.classList.add('hidden');
-                    btn.classList.remove('border-blue-600', 'text-blue-600');
-                    btn.classList.add('border-transparent', 'text-gray-500');
-                }
+                document.getElementById(`tab${capitalize(t)}`).classList.add('hidden');
+                document.getElementById(`tab${capitalize(t)}Btn`).className = "py-2 px-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-blue-600";
             });
+
+            document.getElementById(`tab${capitalize(tabName)}`).classList.remove('hidden');
+            document.getElementById(`tab${capitalize(tabName)}Btn`).className = "py-2 px-3 font-semibold border-b-2 border-blue-600 text-blue-600";
+
+            if (tabName === 'laporan') {
+                renderBookingHistory();
+            }
+        }
+
+        function capitalize(s) {
+            return s.charAt(0).toUpperCase() + s.slice(1);
         }
 
         function populateAdminFields() {
@@ -724,8 +724,6 @@
             document.getElementById('court1Active').checked = settings.courts.court1;
             document.getElementById('court2Active').checked = settings.courts.court2;
             document.getElementById('court3Active').checked = settings.courts.court3;
-
-            renderBookingHistory();
         }
 
         function saveAdminSettings() {
@@ -737,7 +735,7 @@
 
             saveMasterSettings();
             updateUI();
-            alert("Tetapan harga telah disimpan.");
+            alert("Tetapan harga berjaya disimpan!");
         }
 
         function saveQrSettings() {
@@ -752,7 +750,7 @@
 
             saveMasterSettings();
             togglePaymentQR();
-            alert("Tetapan Akaun & QR telah disimpan.");
+            alert("Maklumat akaun & QR berjaya disimpan!");
         }
 
         function saveCourtSettings() {
@@ -762,7 +760,7 @@
 
             saveMasterSettings();
             updateUI();
-            alert("Status ketersediaan gelanggang telah dikemaskini.");
+            alert("Status gelanggang berjaya dikemaskini!");
         }
 
         function renderBookingHistory(filterText = "") {
@@ -773,22 +771,26 @@
             let count = 0;
 
             const filtered = settings.bookings.filter(b => {
-                const searchStr = `${b.refID} ${b.name} ${b.phone} ${b.bookingDate} ${b.court}`.toLowerCase();
-                return searchStr.includes(filterText.toLowerCase());
+                const search = filterText.toLowerCase();
+                return b.custName.toLowerCase().includes(search) ||
+                       b.refNo.toLowerCase().includes(search) ||
+                       b.bookingDate.includes(search);
             });
 
             filtered.forEach(b => {
-                totalRev += b.total;
+                const amt = parseFloat(b.total.replace('RM ', '')) || 0;
+                totalRev += amt;
                 count++;
+
                 tableBody.innerHTML += `
                     <tr class="border-b bg-white hover:bg-gray-50">
-                        <td class="p-2 border-r font-mono text-[11px]">${b.refID}</td>
-                        <td class="p-2 border-r">${b.bookingDate}<br><span class="text-gray-400 text-[10px]">${b.bookingDay}</span></td>
-                        <td class="p-2 border-r font-medium">${b.name}<br><span class="text-gray-400 text-[10px]">${b.phone}</span></td>
-                        <td class="p-2 border-r">${b.court}<br><span class="text-gray-500 text-[10px]">${b.timeLabel}</span></td>
-                        <td class="p-2 border-r text-[10px]">${b.method}</td>
-                        <td class="p-2 border-r font-bold text-blue-700">RM ${b.total.toFixed(2)}</td>
-                        <td class="p-2 text-center"><span class="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.5 rounded font-bold">${b.status}</span></td>
+                        <td class="p-2 border-r font-mono text-blue-600 font-bold">${b.refNo}</td>
+                        <td class="p-2 border-r">${b.bookingDate} (${b.bookingDay})</td>
+                        <td class="p-2 border-r font-semibold">${b.custName}<br><span class="text-[10px] text-gray-500">${b.custPhone}</span></td>
+                        <td class="p-2 border-r">${b.court}<br><span class="text-[10px] text-gray-500">${b.timeLabel}</span></td>
+                        <td class="p-2 border-r">${b.method}</td>
+                        <td class="p-2 border-r font-bold text-gray-800">${b.total}</td>
+                        <td class="p-2 text-center"><span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-[10px] font-bold">${b.status}</span></td>
                     </tr>
                 `;
             });
@@ -798,57 +800,56 @@
         }
 
         function filterBookings() {
-            const txt = document.getElementById('searchBookingInput').value;
-            renderBookingHistory(txt);
+            const text = document.getElementById('searchBookingInput').value;
+            renderBookingHistory(text);
         }
 
-        function clearHistory() {
-            if (confirm("Adakah anda pasti mahu memadam semua rekod tempahan? Laporan pendapatan akan di-reset.")) {
-                settings.bookings = [];
-                saveMasterSettings();
-                renderBookingHistory();
-                renderVisualCourtGrid();
-                updateDropdownTimeslots();
-                alert("Semua sejarah tempahan telah dipadam.");
-            }
-        }
-
-        function updatePin() {
-            const newPin = document.getElementById('newPinInput').value.trim();
-            if (newPin.length >= 4) {
-                settings.ownerPin = newPin;
-                saveMasterSettings();
-                alert("PIN Owner baru berjaya dikemaskini.");
-                document.getElementById('newPinInput').value = "";
-            } else {
-                alert("Sila masukkan sekurang-kurangnya 4 digit PIN.");
-            }
-        }
-
-        // KOD MUAT TURUN / DOWNLOAD DATA TEMPAHAN (EXCEL CSV)
         function downloadBookingsCSV() {
             if (settings.bookings.length === 0) {
-                alert("Tiada rekod tempahan untuk dimuat turun.");
+                alert("Tiada data rekod tempahan untuk dimuat turun.");
                 return;
             }
 
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Include BOM for Excel UTF-8 support
-            csvContent += "Ref ID,Tarikh,Hari,Nama Pelanggan,No Tel,Gelanggang,Masa,Kaedah Bayaran,Jumlah (RM),Status\n";
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Ref ID,Nama,Telefon,Tarikh,Hari,Gelanggang,Masa,Kaedah,Jumlah,Status\n";
 
             settings.bookings.forEach(b => {
-                csvContent += `"${b.refID}","${b.bookingDate}","${b.bookingDay}","${b.name}","${b.phone}","${b.court}","${b.timeLabel}","${b.method}","${b.total.toFixed(2)}","${b.status}"\n`;
+                csvContent += `"${b.refNo}","${b.custName}","${b.custPhone}","${b.bookingDate}","${b.bookingDay}","${b.court}","${b.timeLabel}","${b.method}","${b.total}","${b.status}"\n`;
             });
 
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Rekod_Tempahan_EM6_${new Date().toISOString().split('T')[0]}.csv`);
+            link.setAttribute("download", `rekod_tempahan_em6_${new Date().toISOString().split('T')[0]}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
 
-        // Jalankan aplikasi
+        function clearHistory() {
+            if (confirm("Adakah anda pasti mahu memadamkan SEMUA rekod sejarah tempahan? Action ini tidak boleh dibatalkan.")) {
+                settings.bookings = [];
+                saveMasterSettings();
+                renderBookingHistory();
+                renderVisualCourtGrid();
+                updateDropdownTimeslots();
+                alert("Sejarah tempahan telah dipadamkan.");
+            }
+        }
+
+        function updatePin() {
+            const newPin = document.getElementById('newPinInput').value.trim();
+            if (newPin.length === 4 && !isNaN(newPin)) {
+                settings.ownerPin = newPin;
+                saveMasterSettings();
+                document.getElementById('newPinInput').value = "";
+                alert("PIN Owner berjaya dikemaskini!");
+            } else {
+                alert("Sila masukkan 4 digit angka PIN yang sah.");
+            }
+        }
+
+        // Jalankan persediaan aplikasi apabila halaman dimuatkan
         window.onload = loadSettings;
     </script>
 </body>
