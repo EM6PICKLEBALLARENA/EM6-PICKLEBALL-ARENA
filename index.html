@@ -510,158 +510,148 @@
             document.getElementById('labelBallStd').innerText = settings.ballStdPrice.toFixed(2);
             document.getElementById('labelBallPrem').innerText = settings.ballPremPrice.toFixed(2);
 
-            const courtSelect = document.getElementById('courtSelect');
-            courtSelect.innerHTML = "";
-            if (settings.courts.court1) courtSelect.innerHTML += `<option value="Court 1">Gelanggang 1 (Court 1)</option>`;
-            if (settings.courts.court2) courtSelect.innerHTML += `<option value="Court 2 (VIP)">Gelanggang 2 (VIP Court)</option>`;
-            if (settings.courts.court3) courtSelect.innerHTML += `<option value="Court 3">Gelanggang 3 (Court 3)</option>`;
-
-            if (courtSelect.innerHTML === "") {
-                courtSelect.innerHTML = `<option value="">-- Semua Gelanggang Ditutup --</option>`;
-            }
-
+            populateCourtDropdown();
             renderVisualCourtGrid();
             updateDropdownTimeslots();
             togglePaymentQR();
         }
 
-        function isSlotBooked(courtName, startHour, dateVal) {
-            const targetDate = dateVal || document.getElementById('bookingDate').value;
-            return settings.bookings.some(b => {
-                if (b.court !== courtName || b.bookingDate !== targetDate) return false;
-                // Semak jika waktu ini berada dalam lingkungan tempahan sedia ada
-                const bookedStart = parseInt(b.startHour);
-                const bookedEnd = parseInt(b.endHour);
-                return startHour >= bookedStart && startHour < bookedEnd;
-            });
-        }
+        function populateCourtDropdown() {
+            const courtSelect = document.getElementById('courtSelect');
+            const prevVal = courtSelect.value;
+            courtSelect.innerHTML = '';
 
-        /* RE-DESIGN JADUAL COURT LELANGAI KEMAS & CANTIK */
-        function renderVisualCourtGrid() {
-            const gridContainer = document.getElementById('visualCourtGrid');
-            gridContainer.innerHTML = "";
-            const selectedDate = document.getElementById('bookingDate').value;
-
-            const activeCourts = [];
-            if (settings.courts.court1) activeCourts.push("Court 1");
-            if (settings.courts.court2) activeCourts.push("Court 2 (VIP)");
-            if (settings.courts.court3) activeCourts.push("Court 3");
+            const activeCourts = [
+                { id: 'court1', name: 'Gelanggang 1 (Court 1)' },
+                { id: 'court2', name: 'Gelanggang 2 (VIP Court)' },
+                { id: 'court3', name: 'Gelanggang 3 (Court 3)' }
+            ].filter(c => settings.courts[c.id]);
 
             if (activeCourts.length === 0) {
-                gridContainer.innerHTML = `<p class="col-span-3 text-center text-slate-400 py-6 text-sm">Semua gelanggang ditutup buat sementara waktu.</p>`;
+                courtSelect.innerHTML = `<option value="">-- Semua Gelanggang Ditutup --</option>`;
                 return;
             }
 
-            activeCourts.forEach(courtName => {
-                let courtHtml = `
-                    <div class="bg-slate-800/90 rounded-xl border border-slate-700/80 p-3 flex flex-col justify-between shadow-inner">
-                        <div class="border-b border-slate-700 pb-2 mb-2.5 flex justify-between items-center">
-                            <span class="font-bold text-xs sm:text-sm text-slate-100 flex items-center gap-1.5">
-                                🎾 ${courtName}
-                            </span>
-                            <span class="text-[10px] text-slate-400 font-mono">16 Slot</span>
-                        </div>
-                        <div class="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-1 no-scrollbar">
-                `;
+            activeCourts.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.innerText = c.name;
+                courtSelect.appendChild(opt);
+            });
 
-                ALL_SLOTS.forEach(slot => {
-                    const booked = isSlotBooked(courtName, slot.startHour, selectedDate);
-                    if (booked) {
-                        courtHtml += `
-                            <div class="p-1.5 rounded-lg bg-rose-950/40 border border-rose-800/50 text-rose-300 text-[10px] sm:text-[11px] font-medium flex items-center justify-between cursor-not-allowed opacity-80">
-                                <span>${slot.displayTime}</span>
-                                <span class="text-[9px] bg-rose-600 text-white font-black px-1.5 py-0.2 rounded">BOOKED</span>
-                            </div>
-                        `;
-                    } else {
-                        const isPeak = slot.type === 'peak';
-                        courtHtml += `
-                            <button onclick="selectSlotFromVisual('${courtName}', ${slot.startHour})" class="p-1.5 rounded-lg bg-slate-700/60 hover:bg-emerald-600/20 border border-slate-600 hover:border-emerald-500/80 text-slate-200 hover:text-emerald-300 text-[10px] sm:text-[11px] font-medium flex items-center justify-between transition group">
-                                <span class="group-hover:translate-x-0.5 transition-transform">${slot.displayTime}</span>
-                                <span class="text-[9px] ${isPeak ? 'text-amber-400 font-bold' : 'text-emerald-400'}">
-                                    ${isPeak ? '🔥 RM'+settings.peakPrice : 'RM'+settings.offpeakPrice}
-                                </span>
-                            </button>
-                        `;
-                    }
-                });
+            if (prevVal && settings.courts[prevVal]) {
+                courtSelect.value = prevVal;
+            }
+        }
 
-                courtHtml += `</div></div>`;
-                gridContainer.innerHTML += courtHtml;
+        // Semak kelapangan slot untuk sesuatu gelanggang, tarikh, dan jam mula
+        function isSlotBooked(courtId, dateVal, startHour) {
+            return settings.bookings.some(b => {
+                if (b.courtId === courtId && b.date === dateVal) {
+                    return startHour >= b.startHour && startHour < b.endHour;
+                }
+                return false;
             });
         }
 
-        function selectSlotFromVisual(courtName, startHour) {
-            document.getElementById('courtSelect').value = courtName;
-            updateDropdownTimeslots();
-            document.getElementById('startTimeSlot').value = startHour;
-            onStartTimeChange();
-            calculateTotal();
-            window.scrollTo({ top: document.getElementById('custName').offsetTop - 20, behavior: 'smooth' });
+        function renderVisualCourtGrid() {
+            const grid = document.getElementById('visualCourtGrid');
+            grid.innerHTML = '';
+            const selectedDate = document.getElementById('bookingDate').value;
+
+            const courtsList = [
+                { id: 'court1', name: 'Gelanggang 1' },
+                { id: 'court2', name: 'Gelanggang 2 (VIP)' },
+                { id: 'court3', name: 'Gelanggang 3' }
+            ];
+
+            courtsList.forEach(c => {
+                if (!settings.courts[c.id]) return;
+
+                const card = document.createElement('div');
+                card.className = "bg-slate-800/90 rounded-xl p-3 border border-slate-700/60";
+                
+                let html = `<h3 class="text-xs font-bold text-slate-200 border-b border-slate-700 pb-1.5 mb-2 flex justify-between items-center">
+                    <span>${c.name}</span>
+                    <span class="text-[10px] text-emerald-400 font-normal">8 AM - 12 AM</span>
+                </h3>`;
+
+                html += `<div class="grid grid-cols-4 gap-1 text-[10px] font-medium text-center">`;
+
+                ALL_SLOTS.forEach(slot => {
+                    const booked = isSlotBooked(c.id, selectedDate, slot.startHour);
+                    const statusClass = booked 
+                        ? "bg-rose-500/20 text-rose-300 border-rose-500/40" 
+                        : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
+
+                    html += `<div class="p-1 rounded border ${statusClass}">
+                        ${slot.displayTime}
+                    </div>`;
+                });
+
+                html += `</div>`;
+                card.innerHTML = html;
+                grid.appendChild(card);
+            });
         }
 
-        /* LOGIK PEMILIHAN MASA MULTI-JAM */
         function updateDropdownTimeslots() {
-            const courtSelect = document.getElementById('courtSelect').value;
+            const courtId = document.getElementById('courtSelect').value;
+            const dateVal = document.getElementById('bookingDate').value;
             const startSelect = document.getElementById('startTimeSlot');
-            const selectedDate = document.getElementById('bookingDate').value;
-            
-            startSelect.innerHTML = "";
 
-            if (!courtSelect) {
-                startSelect.innerHTML = `<option value="">-- Tiada Gelanggang --</option>`;
-                updateEndTimeOptions();
+            startSelect.innerHTML = '';
+
+            if (!courtId) {
+                calculateTotal();
                 return;
             }
 
             ALL_SLOTS.forEach(slot => {
-                const booked = isSlotBooked(courtSelect, slot.startHour, selectedDate);
-                if (!booked) {
-                    startSelect.innerHTML += `<option value="${slot.startHour}">${slot.label}</option>`;
-                }
+                const booked = isSlotBooked(courtId, dateVal, slot.startHour);
+                const opt = document.createElement('option');
+                opt.value = slot.startHour;
+                opt.innerText = slot.label + (booked ? " (BOOKED)" : "");
+                opt.disabled = booked;
+                startSelect.appendChild(opt);
             });
-
-            if (startSelect.innerHTML === "") {
-                startSelect.innerHTML = `<option value="">-- Gelanggang Penuh --</option>`;
-            }
 
             onStartTimeChange();
         }
 
         function onStartTimeChange() {
-            updateEndTimeOptions();
-            calculateTotal();
-        }
-
-        function updateEndTimeOptions() {
-            const courtSelect = document.getElementById('courtSelect').value;
-            const startVal = parseInt(document.getElementById('startTimeSlot').value);
+            const courtId = document.getElementById('courtSelect').value;
+            const dateVal = document.getElementById('bookingDate').value;
+            const startHour = parseInt(document.getElementById('startTimeSlot').value);
             const endSelect = document.getElementById('endTimeSlot');
-            const selectedDate = document.getElementById('bookingDate').value;
 
-            endSelect.innerHTML = "";
+            endSelect.innerHTML = '';
 
-            if (isNaN(startVal) || !courtSelect) {
-                endSelect.innerHTML = `<option value="">--</option>`;
+            if (isNaN(startHour)) {
+                calculateTotal();
                 return;
             }
 
-            // Pelanggan boleh sewa dari +1 jam hingga slot sebelum bertemu dengan slot lain yang telah dibooked
-            for (let endHour = startVal + 1; endHour <= 24; endHour++) {
-                // Semak jika jam ini bertembung dengan tempahan orang lain
-                const isConflict = isSlotBooked(courtSelect, endHour - 1, selectedDate);
-                
-                if (isConflict) {
-                    break; // Hentikan pilihan sebab waktu seterusnya sudah dibooked
+            // Membina pilihan Masa Tamat secara berurutan
+            for (let h = startHour + 1; h <= 24; h++) {
+                // Jika menemui slot yang booked di pertengahan, hentikan pilihan tamat
+                const hourToCheck = h - 1;
+                if (isSlotBooked(courtId, dateVal, hourToCheck)) {
+                    break;
                 }
 
-                const duration = endHour - startVal;
-                endSelect.innerHTML += `<option value="${endHour}">${TIME_LABEL_MAP[endHour]} (${duration} Jam)</option>`;
+                const opt = document.createElement('option');
+                opt.value = h;
+                const hoursCount = h - startHour;
+                opt.innerText = `${TIME_LABEL_MAP[h]} (${hoursCount} Jam)`;
+                endSelect.appendChild(opt);
             }
+
+            calculateTotal();
         }
 
         function calculateTotal() {
-            const courtSelect = document.getElementById('courtSelect').value;
+            const courtId = document.getElementById('courtSelect').value;
             const startHour = parseInt(document.getElementById('startTimeSlot').value);
             const endHour = parseInt(document.getElementById('endTimeSlot').value);
 
@@ -670,25 +660,25 @@
             let peakHoursCount = 0;
             let offpeakHoursCount = 0;
 
-            if (courtSelect && !isNaN(startHour) && !isNaN(endHour) && endHour > startHour) {
+            if (courtId && !isNaN(startHour) && !isNaN(endHour) && endHour > startHour) {
                 totalHours = endHour - startHour;
 
                 for (let h = startHour; h < endHour; h++) {
-                    const slotObj = ALL_SLOTS.find(s => s.startHour === h);
-                    if (slotObj) {
-                        if (slotObj.type === 'peak') {
-                            courtTotal += settings.peakPrice;
-                            peakHoursCount++;
-                        } else {
-                            courtTotal += settings.offpeakPrice;
-                            offpeakHoursCount++;
-                        }
+                    const slot = ALL_SLOTS.find(s => s.startHour === h);
+                    if (slot && slot.type === 'peak') {
+                        courtTotal += settings.peakPrice;
+                        peakHoursCount++;
+                    } else {
+                        courtTotal += settings.offpeakPrice;
+                        offpeakHoursCount++;
                     }
                 }
             }
 
+            // Kemaskini Lencana Tempoh
             document.getElementById('durationBadge').innerText = `${totalHours} Jam`;
 
+            // Pengiraan Add-ons
             const paddleQty = parseInt(document.getElementById('paddleQty').value) || 0;
             const ballStdQty = parseInt(document.getElementById('ballStdQty').value) || 0;
             const ballPremQty = parseInt(document.getElementById('ballPremQty').value) || 0;
@@ -699,15 +689,15 @@
 
             const grandTotal = courtTotal + paddleTotal + ballStdTotal + ballPremTotal;
 
+            // Kemaskini Paparan Harga
             document.getElementById('courtPriceDisplay').innerText = `RM ${courtTotal.toFixed(2)}`;
             
-            // Paparkan pecahan jam jika kombinasi peak/offpeak
             let breakdownText = "";
             if (totalHours > 0) {
-                let parts = [];
-                if (offpeakHoursCount > 0) parts.push(`${offpeakHoursCount} Jam Off-Peak`);
-                if (peakHoursCount > 0) parts.push(`${peakHoursCount} Jam Peak`);
-                breakdownText = parts.join(" + ");
+                const parts = [];
+                if (offpeakHoursCount > 0) parts.push(`${offpeakHoursCount}j Off-Peak`);
+                if (peakHoursCount > 0) parts.push(`${peakHoursCount}j Peak`);
+                breakdownText = `(${parts.join(' + ')})`;
             } else {
                 breakdownText = "-";
             }
@@ -716,97 +706,120 @@
             document.getElementById('paddlePriceDisplay').innerText = `RM ${paddleTotal.toFixed(2)}`;
             document.getElementById('ballStdPriceDisplay').innerText = `RM ${ballStdTotal.toFixed(2)}`;
             document.getElementById('ballPremPriceDisplay').innerText = `RM ${ballPremTotal.toFixed(2)}`;
-            document.getElementById('totalPriceDisplay').innerText = `RM ${grandTotal.toFixed(2)}`;
-            document.getElementById('qrAmountDisplay').innerText = `RM ${grandTotal.toFixed(2)}`;
+
+            const formattedGrandTotal = `RM ${grandTotal.toFixed(2)}`;
+            document.getElementById('totalPriceDisplay').innerText = formattedGrandTotal;
+            document.getElementById('qrAmountDisplay').innerText = formattedGrandTotal;
         }
 
         function togglePaymentQR() {
             const method = document.getElementById('paymentMethod').value;
             const qrImg = document.getElementById('merchantQrImg');
-            const bankName = document.getElementById('displayBankName');
-            const accName = document.getElementById('displayAccName');
-            const accNo = document.getElementById('displayAccNo');
-
+            
             if (method === 'duitnow') {
+                document.getElementById('qrTitle').innerText = "Imbas Kod QR DuitNow / Transfer Bank";
                 qrImg.src = settings.duitnowQrImg;
-                bankName.innerText = settings.bankName;
-                accName.innerText = settings.bankAccName;
-                accNo.innerText = settings.bankAccNo;
+                document.getElementById('displayBankName').innerText = settings.bankName;
+                document.getElementById('displayAccName').innerText = settings.bankAccName;
+                document.getElementById('displayAccNo').innerText = settings.bankAccNo;
             } else {
+                document.getElementById('qrTitle').innerText = "Imbas Kod QR Touch 'n Go eWallet";
                 qrImg.src = settings.tngQrImg;
-                bankName.innerText = "Touch 'n Go eWallet";
-                accName.innerText = settings.tngAccName;
-                accNo.innerText = settings.tngAccNo;
+                document.getElementById('displayBankName').innerText = "Touch 'n Go eWallet";
+                document.getElementById('displayAccName').innerText = settings.tngAccName;
+                document.getElementById('displayAccNo').innerText = settings.tngAccNo;
             }
         }
 
         function generateReceipt() {
-            const custName = document.getElementById('custName').value.trim();
-            const custPhone = document.getElementById('custPhone').value.trim();
-            const bookingDate = document.getElementById('bookingDate').value;
-            const bookingDay = document.getElementById('bookingDay').value;
-            const court = document.getElementById('courtSelect').value;
+            const name = document.getElementById('custName').value.trim();
+            const phone = document.getElementById('custPhone').value.trim();
+            const courtId = document.getElementById('courtSelect').value;
+            const dateVal = document.getElementById('bookingDate').value;
+            const dayVal = document.getElementById('bookingDay').value;
             const startHour = parseInt(document.getElementById('startTimeSlot').value);
             const endHour = parseInt(document.getElementById('endTimeSlot').value);
-            const proof = document.getElementById('paymentProof').files.length;
+            const proof = document.getElementById('paymentProof').files[0];
 
-            if (!custName || !custPhone) {
-                alert("Sila isi Nama dan Nombor WhatsApp anda.");
+            if (!name || !phone) {
+                alert("Sila isi nama dan nombor WhatsApp anda.");
                 return;
             }
 
-            if (!court || isNaN(startHour) || isNaN(endHour) || endHour <= startHour) {
-                alert("Sila pilih Masa Mula & Tamat tempahan yang sah.");
+            if (!courtId) {
+                alert("Sila pilih gelanggang yang sah.");
                 return;
             }
 
-            // Pengesahan sekali lagi slot bersilang
-            for (let h = startHour; h < endHour; h++) {
-                if (isSlotBooked(court, h, bookingDate)) {
-                    alert(`Maaf, slot jam ${TIME_LABEL_MAP[h]} telah ditempah. Sila semak semula jadual.`);
-                    renderVisualCourtGrid();
-                    updateDropdownTimeslots();
-                    return;
-                }
+            if (isNaN(startHour) || isNaN(endHour) || endHour <= startHour) {
+                alert("Sila pilih masa mula dan masa tamat yang sah.");
+                return;
             }
 
-            if (proof === 0) {
+            if (!proof) {
                 alert("Sila muat naik bukti resit pembayaran terlebih dahulu.");
                 return;
             }
 
-            const refCode = "EM6-" + Math.floor(100000 + Math.random() * 900000);
-            const methodText = document.getElementById('paymentMethod').value === 'duitnow' ? 'DuitNow QR / Bank' : 'Touch n Go eWallet';
-            const totalStr = document.getElementById('totalPriceDisplay').innerText;
-            const timeRangeLabel = `${TIME_LABEL_MAP[startHour]} - ${TIME_LABEL_MAP[endHour]} (${endHour - startHour} Jam)`;
+            // Pengesahan sekali lagi jika bertindih
+            for (let h = startHour; h < endHour; h++) {
+                if (isSlotBooked(courtId, dateVal, h)) {
+                    alert("Maaf, sebahagian daripada slot masa yang dipilih telah pun ditempah. Sila pilih masa lain.");
+                    return;
+                }
+            }
 
-            const newBooking = {
-                refId: refCode,
-                custName: custName,
-                custPhone: custPhone,
-                bookingDate: bookingDate,
-                bookingDay: bookingDay,
-                court: court,
-                startHour: startHour,
-                endHour: endHour,
-                timeLabel: timeRangeLabel,
-                payMethod: methodText,
-                totalAmount: totalStr,
-                status: "Disahkan"
+            const courtNames = {
+                court1: "Gelanggang 1",
+                court2: "Gelanggang 2 (VIP)",
+                court3: "Gelanggang 3"
             };
 
-            settings.bookings.push(newBooking);
+            const refId = "EM6-" + Math.floor(100000 + Math.random() * 900000);
+            const totalHours = endHour - startHour;
+            const timeRangeText = `${TIME_LABEL_MAP[startHour]} - ${TIME_LABEL_MAP[endHour]}`;
+
+            const paddleQty = parseInt(document.getElementById('paddleQty').value) || 0;
+            const ballStdQty = parseInt(document.getElementById('ballStdQty').value) || 0;
+            const ballPremQty = parseInt(document.getElementById('ballPremQty').value) || 0;
+
+            const totalPriceStr = document.getElementById('totalPriceDisplay').innerText;
+            const payMethodText = document.getElementById('paymentMethod').value === 'duitnow' 
+                ? 'DuitNow QR / Bank Transfer' 
+                : "Touch 'n Go eWallet";
+
+            lastBookingData = {
+                refId,
+                custName: name,
+                custPhone: phone,
+                courtId,
+                courtName: courtNames[courtId],
+                date: dateVal,
+                day: dayVal,
+                startHour,
+                endHour,
+                totalHours,
+                timeRangeText,
+                paddleQty,
+                ballStdQty,
+                ballPremQty,
+                totalPriceStr,
+                payMethodText,
+                timestamp: new Date().toLocaleString()
+            };
+
+            // Simpan ke rekod settings
+            settings.bookings.push(lastBookingData);
             saveMasterSettings();
 
-            lastBookingData = newBooking;
-
-            document.getElementById('refNo').innerText = `No. Rujukan: ${refCode}`;
-            document.getElementById('payMethodDisplay').innerText = `Kaedah Bayaran: ${methodText}`;
-
+            // Papar Resit & QR
+            document.getElementById('refNo').innerText = `No. Rujukan: ${refId}`;
+            document.getElementById('payMethodDisplay').innerText = `Kaedah: ${payMethodText}`;
+            
             const qrContainer = document.getElementById('qrcode');
-            qrContainer.innerHTML = "";
+            qrContainer.innerHTML = '';
             new QRCode(qrContainer, {
-                text: `${refCode}|${custName}|${court}|${bookingDate}|${startHour}-${endHour}`,
+                text: `REF:${refId}|COURT:${lastBookingData.courtName}|DATE:${dateVal}|TIME:${timeRangeText}|NAME:${name}`,
                 width: 128,
                 height: 128
             });
@@ -815,31 +828,36 @@
             renderVisualCourtGrid();
             updateDropdownTimeslots();
 
-            alert("Tempahan berjaya disahkan! Sila hantar bukti resit ke WhatsApp Owner.");
+            alert("Tempahan anda berjaya direkodkan! Sila hantar bukti resit ke WhatsApp Owner.");
         }
 
         function sendToWhatsappOwner() {
             if (!lastBookingData) return;
 
-            const msg = `*PENGESAHAN TEMPAHAN - EM6 PICKLEBALL ARENA* 🏓%0A%0A` +
-                `*No Rujukan:* ${lastBookingData.refId}%0A` +
-                `*Nama Pelanggan:* ${lastBookingData.custName}%0A` +
-                `*No WhatsApp:* ${lastBookingData.custPhone}%0A` +
-                `*Tarikh & Hari:* ${lastBookingData.bookingDate} (${lastBookingData.bookingDay})%0A` +
-                `*Gelanggang:* ${lastBookingData.court}%0A` +
-                `*Tempoh Sewaan:* ${lastBookingData.timeLabel}%0A` +
-                `*Kaedah Bayaran:* ${lastBookingData.payMethod}%0A` +
-                `*Jumlah Bayaran:* ${lastBookingData.totalAmount}%0A%0A` +
-                `Saya telah membuat pembayaran dan lampirkan resit transaksi ini. Terima kasih!`;
+            const text = `*TEMPAHAN BAHARU - EM6 PICKLEBALL ARENA* 🏓\n\n` +
+                `*Ref ID:* ${lastBookingData.refId}\n` +
+                `*Nama:* ${lastBookingData.custName}\n` +
+                `*Telefon:* ${lastBookingData.custPhone}\n\n` +
+                `*Gelanggang:* ${lastBookingData.courtName}\n` +
+                `*Tarikh:* ${lastBookingData.date} (${lastBookingData.day})\n` +
+                `*Masa:* ${lastBookingData.timeRangeText} (${lastBookingData.totalHours} Jam)\n\n` +
+                `*Add-ons:*\n` +
+                `- Paddle (2pcs): ${lastBookingData.paddleQty} set\n` +
+                `- Bola Standard: ${lastBookingData.ballStdQty} pc\n` +
+                `- Bola Premium: ${lastBookingData.ballPremQty} pc\n\n` +
+                `*Jumlah Bayaran:* ${lastBookingData.totalPriceStr}\n` +
+                `*Kaedah:* ${lastBookingData.payMethodText}\n\n` +
+                `Saya telah muat naik bukti bayaran. Mohon sahkan tempahan saya. Terima kasih!`;
 
-            window.open(`https://wa.me/${OWNER_WHATSAPP}?text=${msg}`, '_blank');
+            const encoded = encodeURIComponent(text);
+            window.open(`https://wa.me/${OWNER_WHATSAPP}?text=${encoded}`, '_blank');
         }
 
-        /* LOGIK PANEL OWNER (ADMIN) */
+        // --- DOKUMEN MODAL OWNER & ADMIN CONTROL ---
         function openAdminModal() {
-            const pin = prompt("Masukkan PIN Owner:");
+            const pin = prompt("Masukkan 4 Angka PIN Owner:");
             if (pin === settings.ownerPin) {
-                populateAdminFields();
+                populateAdminInputs();
                 document.getElementById('adminModal').classList.remove('hidden');
             } else if (pin !== null) {
                 alert("PIN Salah!");
@@ -874,7 +892,7 @@
             }
         }
 
-        function populateAdminFields() {
+        function populateAdminInputs() {
             document.getElementById('settingOffPeak').value = settings.offpeakPrice;
             document.getElementById('settingPeak').value = settings.peakPrice;
             document.getElementById('settingPaddle').value = settings.paddlePrice;
@@ -904,22 +922,22 @@
 
             saveMasterSettings();
             updateUI();
-            alert("Tetapan harga berjaya disimpan!");
+            alert("Tetapan harga berjaya dikemaskini!");
         }
 
         function saveQrSettings() {
-            settings.bankName = document.getElementById('settingBankName').value;
-            settings.bankAccNo = document.getElementById('settingBankAccNo').value;
-            settings.bankAccName = document.getElementById('settingBankAccName').value;
-            settings.duitnowQrImg = document.getElementById('settingDuitNowQr').value;
+            settings.bankName = document.getElementById('settingBankName').value.trim();
+            settings.bankAccNo = document.getElementById('settingBankAccNo').value.trim();
+            settings.bankAccName = document.getElementById('settingBankAccName').value.trim();
+            settings.duitnowQrImg = document.getElementById('settingDuitNowQr').value.trim();
 
-            settings.tngAccNo = document.getElementById('settingTngAccNo').value;
-            settings.tngAccName = document.getElementById('settingTngAccName').value;
-            settings.tngQrImg = document.getElementById('settingTngQr').value;
+            settings.tngAccNo = document.getElementById('settingTngAccNo').value.trim();
+            settings.tngAccName = document.getElementById('settingTngAccName').value.trim();
+            settings.tngQrImg = document.getElementById('settingTngQr').value.trim();
 
             saveMasterSettings();
-            updateUI();
-            alert("Maklumat akaun & QR berjaya disimpan!");
+            togglePaymentQR();
+            alert("Tetapan akaun & QR berjaya dikemaskini!");
         }
 
         function saveCourtSettings() {
@@ -934,55 +952,54 @@
 
         function updatePin() {
             const newPin = document.getElementById('newPinInput').value.trim();
-            if (newPin.length >= 4) {
+            if (newPin.length === 4 && !isNaN(newPin)) {
                 settings.ownerPin = newPin;
                 saveMasterSettings();
+                document.getElementById('newPinInput').value = '';
                 alert("PIN Owner berjaya ditukar!");
-                document.getElementById('newPinInput').value = "";
             } else {
-                alert("Sila masukkan sekurang-kurangnya 4 angka PIN.");
+                alert("Sila masukkan 4 angka nombor PIN yang sah.");
             }
         }
 
-        function renderBookingHistory(filterText = "") {
-            const tableBody = document.getElementById('bookingHistoryTable');
-            tableBody.innerHTML = "";
+        function renderBookingHistory(filteredData = null) {
+            const table = document.getElementById('bookingHistoryTable');
+            table.innerHTML = '';
 
+            const list = filteredData || settings.bookings;
             let totalRev = 0;
-            let count = 0;
 
-            const filtered = settings.bookings.filter(b => {
-                const query = filterText.toLowerCase();
-                return b.custName.toLowerCase().includes(query) ||
-                       b.refId.toLowerCase().includes(query) ||
-                       b.bookingDate.includes(query);
-            });
+            document.getElementById('bookingCount').innerText = list.length;
 
-            filtered.reverse().forEach(b => {
-                const numVal = parseFloat(b.totalAmount.replace("RM ", "")) || 0;
-                totalRev += numVal;
-                count++;
+            list.forEach(b => {
+                const numericPrice = parseFloat(b.totalPriceStr.replace("RM ", "")) || 0;
+                totalRev += numericPrice;
 
-                tableBody.innerHTML += `
-                    <tr class="border-b hover:bg-gray-100">
-                        <td class="p-2 border-r font-mono font-bold text-blue-600">${b.refId}</td>
-                        <td class="p-2 border-r">${b.bookingDate}<br><span class="text-gray-500">${b.bookingDay}</span></td>
-                        <td class="p-2 border-r font-semibold">${b.custName}<br><span class="text-gray-500 font-normal">${b.custPhone}</span></td>
-                        <td class="p-2 border-r">${b.court}<br><span class="text-gray-500">${b.timeLabel}</span></td>
-                        <td class="p-2 border-r">${b.payMethod}</td>
-                        <td class="p-2 border-r font-bold text-gray-800">${b.totalAmount}</td>
-                        <td class="p-2 text-center"><span class="bg-green-100 text-green-800 text-[10px] px-2 py-0.5 rounded-full font-bold">${b.status}</span></td>
-                    </tr>
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-gray-100";
+                tr.innerHTML = `
+                    <td class="p-2 border-r font-mono">${b.refId}</td>
+                    <td class="p-2 border-r">${b.date}<br><span class="text-[10px] text-gray-500">${b.day}</span></td>
+                    <td class="p-2 border-r font-bold">${b.custName}<br><span class="text-[10px] text-gray-500">${b.custPhone}</span></td>
+                    <td class="p-2 border-r">${b.courtName}<br><span class="text-[10px] text-blue-600 font-semibold">${b.timeRangeText} (${b.totalHours}j)</span></td>
+                    <td class="p-2 border-r text-[10px]">${b.payMethodText}</td>
+                    <td class="p-2 border-r font-bold text-blue-700">${b.totalPriceStr}</td>
+                    <td class="p-2 text-center"><span class="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold">Disahkan</span></td>
                 `;
+                table.appendChild(tr);
             });
 
             document.getElementById('totalRevenue').innerText = `RM ${totalRev.toFixed(2)}`;
-            document.getElementById('bookingCount').innerText = count;
         }
 
         function filterBookings() {
-            const val = document.getElementById('searchBookingInput').value;
-            renderBookingHistory(val);
+            const query = document.getElementById('searchBookingInput').value.toLowerCase();
+            const filtered = settings.bookings.filter(b => 
+                b.custName.toLowerCase().includes(query) ||
+                b.refId.toLowerCase().includes(query) ||
+                b.date.toLowerCase().includes(query)
+            );
+            renderBookingHistory(filtered);
         }
 
         function downloadBookingsCSV() {
@@ -992,20 +1009,21 @@
             }
 
             let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Ref ID,Tarikh,Hari,Nama,Telefon,Gelanggang,Masa,Kaedah Bayaran,Jumlah,Status\n";
+            csvContent += "Ref ID,Nama,Phone,Gelanggang,Tarikh,Hari,Masa,Jumlah Jam,Harga,Kaedah,Masa Tempah\n";
 
             settings.bookings.forEach(b => {
                 const row = [
                     b.refId,
-                    b.bookingDate,
-                    b.bookingDay,
                     `"${b.custName}"`,
                     `"${b.custPhone}"`,
-                    `"${b.court}"`,
-                    `"${b.timeLabel}"`,
-                    `"${b.payMethod}"`,
-                    `"${b.totalAmount}"`,
-                    b.status
+                    `"${b.courtName}"`,
+                    b.date,
+                    b.day,
+                    `"${b.timeRangeText}"`,
+                    b.totalHours,
+                    `"${b.totalPriceStr}"`,
+                    `"${b.payMethodText}"`,
+                    `"${b.timestamp}"`
                 ].join(",");
                 csvContent += row + "\n";
             });
@@ -1020,7 +1038,7 @@
         }
 
         function clearHistory() {
-            if (confirm("Adakah anda pasti untuk memadam SEMUA sejarah tempahan? Tindakan ini tidak boleh diundurkan.")) {
+            if (confirm("Adakah anda pasti untuk memadam semua sejarah tempahan? Action ini tidak boleh diundur!")) {
                 settings.bookings = [];
                 saveMasterSettings();
                 renderBookingHistory();
