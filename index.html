@@ -41,20 +41,22 @@
             </button>
         </div>
 
-        <!-- SEKSYEN STATUS JADUAL COURT -->
+        <!-- SEKSYEN STATUS JADUAL COURT & PILIHAN MASA VIA KLIK -->
         <div class="mb-6 p-4 sm:p-5 bg-slate-900 text-white rounded-2xl shadow-md">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 border-b border-slate-800 pb-3">
                 <div>
                     <h2 class="text-base sm:text-lg font-black tracking-wide text-emerald-400 flex items-center gap-2">
-                        <span>📅</span> Status Ketersediaan Gelanggang
+                        <span>📅</span> Pilih Gelanggang & Slot Masa (Klik Jam)
                     </h2>
                     <p class="text-xs text-slate-400 mt-0.5" id="selectedDateDisplay">Paparan untuk: -</p>
                 </div>
                 <!-- Petunjuk Status -->
                 <div class="flex items-center gap-2 text-xs font-medium bg-slate-800/80 p-1.5 px-3 rounded-lg border border-slate-700">
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span> Kosong</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-emerald-500 rounded-full"></span> Kosong</span>
                     <span class="text-slate-600">|</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-rose-500 rounded-full shadow-[0_0_8px_rgba(244,63,94,0.8)]"></span> Booked</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-blue-500 rounded-full"></span> Dipilih</span>
+                    <span class="text-slate-600">|</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-rose-500 rounded-full"></span> Booked</span>
                 </div>
             </div>
             
@@ -69,7 +71,7 @@
             <div class="space-y-4">
                 <h2 class="text-lg font-bold text-gray-800 border-b pb-2 flex items-center gap-2">
                     <span class="bg-blue-600 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">1</span>
-                    Maklumat & Masa Tempahan
+                    Maklumat Tempahan
                 </h2>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -104,46 +106,17 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">Pilih Gelanggang</label>
-                    <select id="courtSelect" onchange="updateDropdownTimeslots()" class="w-full p-3 text-sm border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-semibold text-gray-800 transition">
-                        <!-- Pilihan gelanggang dijana dinamik -->
-                    </select>
-                </div>
-
-                <!-- SEWAAN BERBILANG JAM (Pilihan Masa & Butang Tambah Jam) -->
-                <div class="bg-blue-50/70 p-3.5 rounded-xl border border-blue-200 space-y-3">
+                <!-- Ringkasan Masa Yang Dipilih Melalui Klik -->
+                <div class="bg-blue-50/70 p-3.5 rounded-xl border border-blue-200 space-y-2">
                     <div class="flex items-center justify-between">
                         <span class="text-xs font-bold text-blue-900 flex items-center gap-1.5">
-                            ⏱️ Tempoh & Jam Sewaan
+                            ⏱️ Slot Dipilih:
                         </span>
-                        <span id="durationBadge" class="bg-blue-600 text-white text-xs px-2.5 py-0.5 rounded-full font-bold shadow-sm">1 Jam</span>
+                        <span id="durationBadge" class="bg-blue-600 text-white text-xs px-2.5 py-0.5 rounded-full font-bold shadow-sm">0 Jam</span>
                     </div>
-
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-[11px] font-semibold text-gray-600 mb-1">Masa Mula</label>
-                            <select id="startTimeSlot" onchange="onStartTimeChange()" class="w-full p-2.5 text-xs border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium">
-                                <!-- Option dijana dinamik -->
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-[11px] font-semibold text-gray-600 mb-1">Masa Tamat</label>
-                            <select id="endTimeSlot" onchange="calculateTotal()" class="w-full p-2.5 text-xs border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium">
-                                <!-- Option dijana dinamik -->
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- BUTANG PANTAS TAMBAH JAM -->
-                    <div class="pt-1 border-t border-blue-200/60">
-                        <p class="text-[10px] text-gray-500 font-semibold mb-1.5">Tambah Jam Pantas:</p>
-                        <div class="flex gap-2">
-                            <button type="button" onclick="addExtraHours(1)" class="flex-1 bg-white hover:bg-blue-600 hover:text-white border border-blue-300 text-blue-800 text-xs py-1.5 px-2 rounded-lg font-bold shadow-sm transition active:scale-95">+1 Jam</button>
-                            <button type="button" onclick="addExtraHours(2)" class="flex-1 bg-white hover:bg-blue-600 hover:text-white border border-blue-300 text-blue-800 text-xs py-1.5 px-2 rounded-lg font-bold shadow-sm transition active:scale-95">+2 Jam</button>
-                            <button type="button" onclick="addExtraHours(3)" class="flex-1 bg-white hover:bg-blue-600 hover:text-white border border-blue-300 text-blue-800 text-xs py-1.5 px-2 rounded-lg font-bold shadow-sm transition active:scale-95">+3 Jam</button>
-                        </div>
-                    </div>
+                    <p id="selectedCourtTimeText" class="text-xs text-blue-900 font-bold bg-white p-2.5 rounded-lg border border-blue-100">
+                        Sila klik mana-mana jam di atas untuk memilih masa.
+                    </p>
                 </div>
 
                 <h2 class="text-lg font-bold text-gray-800 border-b pb-2 pt-2 flex items-center gap-2">
@@ -253,7 +226,6 @@
                     <div id="qrcode" class="flex justify-center my-3"></div>
                     <p class="text-xs text-gray-500">Bayaran telah disahkan. Tunjukkan Kod QR ini di kaunter untuk masuk/mengambil alatan.</p>
                     
-                    <!-- BUTANG WHATSAPP OWNER -->
                     <button id="whatsappBtn" onclick="sendToWhatsappOwner()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm active:scale-95">
                         💬 Hantar Bukti Resit Ke WhatsApp Owner
                     </button>
@@ -270,7 +242,6 @@
                 <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600 font-bold text-2xl px-2">&times;</button>
             </div>
             
-            <!-- Menu Tab -->
             <div class="flex border-b mb-4 overflow-x-auto no-scrollbar whitespace-nowrap gap-2 pb-1 text-xs sm:text-sm">
                 <button id="tabHargaBtn" onclick="switchTab('harga')" class="py-2 px-3 font-semibold border-b-2 border-blue-600 text-blue-600">Harga</button>
                 <button id="tabQrBtn" onclick="switchTab('qr')" class="py-2 px-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-blue-600">Akaun & QR</button>
@@ -432,6 +403,8 @@
 
         const DAYS_MY = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
 
+        let selectedCourtId = null;
+        let selectedSlots = []; // Menyimpan jam yang diklik
         let lastBookingData = null;
 
         let settings = {
@@ -487,6 +460,7 @@
 
         function onDateChange() {
             updateDayFromDate();
+            resetSelection();
             updateUI();
         }
 
@@ -513,8 +487,15 @@
                 document.getElementById('bookingDate').value = `${yyyy}-${mm}-${dd}`;
                 document.getElementById('selectedDateDisplay').innerText = `Paparan untuk: ${yyyy}-${mm}-${dd} (${selectedDayName})`;
                 
+                resetSelection();
                 updateUI();
             }
+        }
+
+        function resetSelection() {
+            selectedCourtId = null;
+            selectedSlots = [];
+            calculateTotal();
         }
 
         function updateUI() {
@@ -522,38 +503,8 @@
             document.getElementById('labelBallStd').innerText = settings.ballStdPrice.toFixed(2);
             document.getElementById('labelBallPrem').innerText = settings.ballPremPrice.toFixed(2);
 
-            populateCourtDropdown();
             renderVisualCourtGrid();
-            updateDropdownTimeslots();
             togglePaymentQR();
-        }
-
-        function populateCourtDropdown() {
-            const courtSelect = document.getElementById('courtSelect');
-            const prevVal = courtSelect.value;
-            courtSelect.innerHTML = '';
-
-            const activeCourts = [
-                { id: 'court1', name: 'Gelanggang 1 (Court 1)' },
-                { id: 'court2', name: 'Gelanggang 2 (VIP Court)' },
-                { id: 'court3', name: 'Gelanggang 3 (Court 3)' }
-            ].filter(c => settings.courts[c.id]);
-
-            if (activeCourts.length === 0) {
-                courtSelect.innerHTML = `<option value="">-- Semua Gelanggang Ditutup --</option>`;
-                return;
-            }
-
-            activeCourts.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.id;
-                opt.innerText = c.name;
-                courtSelect.appendChild(opt);
-            });
-
-            if (prevVal && settings.courts[prevVal]) {
-                courtSelect.value = prevVal;
-            }
         }
 
         function isSlotBooked(courtId, dateVal, startHour) {
@@ -563,6 +514,35 @@
                 }
                 return false;
             });
+        }
+
+        // FUNGSI KLIK JAM PADA GELANGGANG
+        function toggleSlotSelection(courtId, startHour) {
+            const dateVal = document.getElementById('bookingDate').value;
+
+            if (isSlotBooked(courtId, dateVal, startHour)) {
+                alert("Masa ini telah di-booking oleh pelanggan lain.");
+                return;
+            }
+
+            // Jika tukar gelanggang, kosongkan pilihan terdahulu
+            if (selectedCourtId && selectedCourtId !== courtId) {
+                selectedSlots = [];
+            }
+            selectedCourtId = courtId;
+
+            const index = selectedSlots.indexOf(startHour);
+            if (index > -1) {
+                selectedSlots.splice(index, 1);
+            } else {
+                selectedSlots.push(startHour);
+            }
+
+            // Susun semula mengikut jam berurutan
+            selectedSlots.sort((a, b) => a - b);
+
+            renderVisualCourtGrid();
+            calculateTotal();
         }
 
         function renderVisualCourtGrid() {
@@ -584,18 +564,23 @@
                 
                 let html = `<h3 class="text-xs font-bold text-slate-200 border-b border-slate-700 pb-1.5 mb-2 flex justify-between items-center">
                     <span>${c.name}</span>
-                    <span class="text-[10px] text-emerald-400 font-normal">8 AM - 12 AM</span>
+                    <span class="text-[10px] text-emerald-400 font-normal">Klik jam untuk pilih</span>
                 </h3>`;
 
                 html += `<div class="grid grid-cols-4 gap-1 text-[10px] font-medium text-center">`;
 
                 ALL_SLOTS.forEach(slot => {
                     const booked = isSlotBooked(c.id, selectedDate, slot.startHour);
-                    const statusClass = booked 
-                        ? "bg-rose-500/20 text-rose-300 border-rose-500/40" 
-                        : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40";
+                    const isSelected = (selectedCourtId === c.id && selectedSlots.includes(slot.startHour));
 
-                    html += `<div class="p-1 rounded border ${statusClass}">
+                    let statusClass = "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/40 cursor-pointer";
+                    if (booked) {
+                        statusClass = "bg-rose-500/20 text-rose-300 border-rose-500/40 cursor-not-allowed opacity-60";
+                    } else if (isSelected) {
+                        statusClass = "bg-blue-600 text-white border-blue-400 shadow-md cursor-pointer font-bold scale-105 transition-transform";
+                    }
+
+                    html += `<div onclick="toggleSlotSelection('${c.id}', ${slot.startHour})" class="p-1 rounded border transition ${statusClass}">
                         ${slot.displayTime}
                     </div>`;
                 });
@@ -606,104 +591,14 @@
             });
         }
 
-        function updateDropdownTimeslots() {
-            const courtId = document.getElementById('courtSelect').value;
-            const dateVal = document.getElementById('bookingDate').value;
-            const startSelect = document.getElementById('startTimeSlot');
-
-            startSelect.innerHTML = '';
-
-            if (!courtId) {
-                calculateTotal();
-                return;
-            }
-
-            ALL_SLOTS.forEach(slot => {
-                const booked = isSlotBooked(courtId, dateVal, slot.startHour);
-                const opt = document.createElement('option');
-                opt.value = slot.startHour;
-                opt.innerText = slot.label + (booked ? " (BOOKED)" : "");
-                opt.disabled = booked;
-                startSelect.appendChild(opt);
-            });
-
-            onStartTimeChange();
-        }
-
-        function onStartTimeChange() {
-            const courtId = document.getElementById('courtSelect').value;
-            const dateVal = document.getElementById('bookingDate').value;
-            const startHour = parseInt(document.getElementById('startTimeSlot').value);
-            const endSelect = document.getElementById('endTimeSlot');
-
-            endSelect.innerHTML = '';
-
-            if (isNaN(startHour)) {
-                calculateTotal();
-                return;
-            }
-
-            // Membina pilihan Masa Tamat secara berurutan untuk fungsi Multi-Jam
-            for (let h = startHour + 1; h <= 24; h++) {
-                const hourToCheck = h - 1;
-                if (isSlotBooked(courtId, dateVal, hourToCheck)) {
-                    break;
-                }
-
-                const opt = document.createElement('option');
-                opt.value = h;
-                const hoursCount = h - startHour;
-                opt.innerText = `${TIME_LABEL_MAP[h]} (${hoursCount} Jam)`;
-                endSelect.appendChild(opt);
-            }
-
-            calculateTotal();
-        }
-
-        // FUNGSI BARU: Tambah Jam Pantas (+1, +2, +3 Jam)
-        function addExtraHours(hoursToAdd) {
-            const startHour = parseInt(document.getElementById('startTimeSlot').value);
-            const endSelect = document.getElementById('endTimeSlot');
-
-            if (isNaN(startHour)) {
-                alert("Sila pilih masa mula dahulu.");
-                return;
-            }
-
-            const currentEndHour = parseInt(endSelect.value) || (startHour + 1);
-            const targetEndHour = currentEndHour + hoursToAdd;
-
-            // Semak jika pilihan sasaran wujud dalam option dropdown masa tamat
-            let found = false;
-            for (let i = 0; i < endSelect.options.length; i++) {
-                if (parseInt(endSelect.options[i].value) === targetEndHour) {
-                    endSelect.selectedIndex = i;
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found) {
-                alert(`Tidak dapat menambah ${hoursToAdd} jam kerana terdapat pertindihan tempahan lain atau melepasi waktu operasi arena.`);
-            } else {
-                calculateTotal();
-            }
-        }
-
         function calculateTotal() {
-            const courtId = document.getElementById('courtSelect').value;
-            const startHour = parseInt(document.getElementById('startTimeSlot').value);
-            const endHour = parseInt(document.getElementById('endTimeSlot').value);
-
             let courtTotal = 0;
-            let totalHours = 0;
+            let totalHours = selectedSlots.length;
             let peakHoursCount = 0;
             let offpeakHoursCount = 0;
 
-            if (courtId && !isNaN(startHour) && !isNaN(endHour) && endHour > startHour) {
-                totalHours = endHour - startHour;
-
-                for (let h = startHour; h < endHour; h++) {
+            if (selectedCourtId && totalHours > 0) {
+                selectedSlots.forEach(h => {
                     const slot = ALL_SLOTS.find(s => s.startHour === h);
                     if (slot && slot.type === 'peak') {
                         courtTotal += settings.peakPrice;
@@ -712,10 +607,27 @@
                         courtTotal += settings.offpeakPrice;
                         offpeakHoursCount++;
                     }
-                }
+                });
             }
 
-            document.getElementById('durationBadge').innerText = `${totalHours} Jam`;
+            const courtNames = {
+                court1: "Gelanggang 1",
+                court2: "Gelanggang 2 (VIP)",
+                court3: "Gelanggang 3"
+            };
+
+            const durationBadge = document.getElementById('durationBadge');
+            const selectedTextEl = document.getElementById('selectedCourtTimeText');
+
+            durationBadge.innerText = `${totalHours} Jam`;
+
+            if (selectedCourtId && totalHours > 0) {
+                const minHour = Math.min(...selectedSlots);
+                const maxHour = Math.max(...selectedSlots) + 1;
+                selectedTextEl.innerHTML = `<span class="text-blue-700 font-extrabold">${courtNames[selectedCourtId]}</span>: ${TIME_LABEL_MAP[minHour]} - ${TIME_LABEL_MAP[maxHour]} (${totalHours} Jam Dipilih)`;
+            } else {
+                selectedTextEl.innerText = "Sila klik mana-mana jam di atas untuk memilih masa.";
+            }
 
             const paddleQty = parseInt(document.getElementById('paddleQty').value) || 0;
             const ballStdQty = parseInt(document.getElementById('ballStdQty').value) || 0;
@@ -771,11 +683,8 @@
         function generateReceipt() {
             const name = document.getElementById('custName').value.trim();
             const phone = document.getElementById('custPhone').value.trim();
-            const courtId = document.getElementById('courtSelect').value;
             const dateVal = document.getElementById('bookingDate').value;
             const dayVal = document.getElementById('bookingDay').value;
-            const startHour = parseInt(document.getElementById('startTimeSlot').value);
-            const endHour = parseInt(document.getElementById('endTimeSlot').value);
             const proof = document.getElementById('paymentProof').files[0];
 
             if (!name || !phone) {
@@ -783,13 +692,8 @@
                 return;
             }
 
-            if (!courtId) {
-                alert("Sila pilih gelanggang yang sah.");
-                return;
-            }
-
-            if (isNaN(startHour) || isNaN(endHour) || endHour <= startHour) {
-                alert("Sila pilih masa mula dan masa tamat yang sah.");
+            if (!selectedCourtId || selectedSlots.length === 0) {
+                alert("Sila klik sekurang-kurangnya satu jam pada gelanggang untuk menempah.");
                 return;
             }
 
@@ -798,9 +702,10 @@
                 return;
             }
 
-            for (let h = startHour; h < endHour; h++) {
-                if (isSlotBooked(courtId, dateVal, h)) {
-                    alert("Maaf, sebahagian daripada slot masa yang dipilih telah pun ditempah. Sila pilih masa lain.");
+            // Semak pertindihan
+            for (let h of selectedSlots) {
+                if (isSlotBooked(selectedCourtId, dateVal, h)) {
+                    alert("Maaf, sebahagian daripada masa yang dipilih telah pun ditempah. Sila pilih masa lain.");
                     return;
                 }
             }
@@ -811,9 +716,11 @@
                 court3: "Gelanggang 3"
             };
 
+            const minHour = Math.min(...selectedSlots);
+            const maxHour = Math.max(...selectedSlots) + 1;
             const refId = "EM6-" + Math.floor(100000 + Math.random() * 900000);
-            const totalHours = endHour - startHour;
-            const timeRangeText = `${TIME_LABEL_MAP[startHour]} - ${TIME_LABEL_MAP[endHour]}`;
+            const totalHours = selectedSlots.length;
+            const timeRangeText = `${TIME_LABEL_MAP[minHour]} - ${TIME_LABEL_MAP[maxHour]}`;
 
             const paddleQty = parseInt(document.getElementById('paddleQty').value) || 0;
             const ballStdQty = parseInt(document.getElementById('ballStdQty').value) || 0;
@@ -828,12 +735,12 @@
                 refId,
                 custName: name,
                 custPhone: phone,
-                courtId,
-                courtName: courtNames[courtId],
+                courtId: selectedCourtId,
+                courtName: courtNames[selectedCourtId],
                 date: dateVal,
                 day: dayVal,
-                startHour,
-                endHour,
+                startHour: minHour,
+                endHour: maxHour,
                 totalHours,
                 timeRangeText,
                 paddleQty,
@@ -859,8 +766,8 @@
             });
 
             document.getElementById('receiptSection').classList.remove('hidden');
+            resetSelection();
             renderVisualCourtGrid();
-            updateDropdownTimeslots();
 
             alert("Tempahan anda berjaya direkodkan! Sila hantar bukti resit ke WhatsApp Owner.");
         }
@@ -1075,8 +982,8 @@
                 settings.bookings = [];
                 saveMasterSettings();
                 renderBookingHistory();
+                resetSelection();
                 renderVisualCourtGrid();
-                updateDropdownTimeslots();
                 alert("Sejarah tempahan telah dipadam.");
             }
         }
