@@ -2,53 +2,50 @@
 <html lang="ms">
 <head>
     <meta charset="UTF-8">
-    <!-- Mengoptimumkan saiz paparan khas untuk skrin telefon -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EM6 Pickleball Arena</title>
 
-    <!-- PWA & Mobile Web App Meta Tags -->
+    <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="EM6 Arena">
 
-    <!-- Web App Manifest Dynamic Data Link -->
+    <!-- Web App Manifest Dynamic Link -->
     <link rel="manifest" id="manifestLink">
 
-    <!-- Tailwind CSS (CDN) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- QRCode JS Library -->
+    <!-- QRCode JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     
-    <!-- Firebase Libraries (Compat) -->
+    <!-- Firebase JS (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
     <style>
-        /* Menghilangkan scrollbar untuk navigasi mudah alih */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* Menghalang sentuhan melampau (touch bounce) pada telefon */
-        body {
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
-        }
+        body { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen pb-12 select-none">
 
-    <!-- APP HEADER / NAVBAR -->
+    <!-- APP HEADER WITH EM6 LOGO -->
     <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-lg">
         <div class="max-w-md mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-2">
-                <div class="w-9 h-9 bg-amber-500 rounded-xl flex items-center justify-center text-slate-950 font-black text-xl shadow-md shadow-amber-500/20">
-                    🏓
+            <div class="flex items-center gap-3">
+                <!-- LOGO EM6 ARENA -->
+                <div class="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center p-0.5 shadow-md shadow-amber-500/20 overflow-hidden">
+                    <img id="appLogo" src="logo-em6.png" alt="EM6 Logo" class="w-full h-full object-cover rounded-[10px]" onerror="this.onerror=null; this.classList.add('hidden'); document.getElementById('fallbackLogo').classList.remove('hidden');">
+                    <!-- Fallback Badge jika logo-em6.png tiada lagi -->
+                    <span id="fallbackLogo" class="hidden text-slate-950 font-black text-sm tracking-tighter">EM6</span>
                 </div>
+
                 <div>
-                    <h1 class="font-black text-base tracking-wide text-white leading-tight">EM6 ARENA</h1>
+                    <h1 class="font-black text-base tracking-wider text-amber-400 leading-tight">EM6 ARENA</h1>
                     <div class="flex items-center gap-1.5 text-[10px]">
                         <span id="syncStatus" class="inline-block w-2 h-2 bg-amber-500 rounded-full"></span>
                         <span id="syncText" class="text-slate-400 font-medium">Memuatkan...</span>
@@ -64,38 +61,22 @@
 
     <main class="max-w-md mx-auto px-4 pt-4 space-y-5">
 
-        <!-- STEP 1: PILIHAN TARIKH PANTAS -->
+        <!-- STEP 1: PILIHAN TARIKH INTERAKTIF (KLIK SAHAJA) -->
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md space-y-3">
             <div class="flex justify-between items-center">
                 <h2 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <span>📅</span> 1. Pilih Tarikh Tempahan
+                    <span>📅</span> 1. Pilih Tarikh (Klik Sahaja)
                 </h2>
+                <span id="selectedDateBadge" class="text-[10px] font-bold text-slate-300 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700"></span>
             </div>
 
-            <!-- Quick Date Buttons -->
-            <div class="grid grid-cols-3 gap-2">
-                <button type="button" onclick="setQuickDate(0)" class="py-2 px-1 bg-slate-800 border border-slate-700 hover:border-amber-500 rounded-xl text-xs font-bold text-slate-200 active:scale-95 transition text-center">
-                    Hari Ini
-                </button>
-                <button type="button" onclick="setQuickDate(1)" class="py-2 px-1 bg-slate-800 border border-slate-700 hover:border-amber-500 rounded-xl text-xs font-bold text-slate-200 active:scale-95 transition text-center">
-                    Esok
-                </button>
-                <button type="button" onclick="setQuickDate(2)" class="py-2 px-1 bg-slate-800 border border-slate-700 hover:border-amber-500 rounded-xl text-xs font-bold text-slate-200 active:scale-95 transition text-center">
-                    Lusa
-                </button>
+            <!-- Horizontal Date Picker Bar (Scroll & Click) -->
+            <div id="dateSelectorContainer" class="flex gap-2 overflow-x-auto pb-1 no-scrollbar pt-1">
+                <!-- Rendered dynamically via JS -->
             </div>
 
-            <div class="grid grid-cols-2 gap-2 pt-1">
-                <div>
-                    <label class="text-[10px] text-slate-400 font-semibold block mb-1">Tarikh</label>
-                    <input type="date" id="bookingDate" onchange="onDateChange()" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2 text-xs focus:ring-1 focus:ring-amber-500 outline-none">
-                </div>
-                <div>
-                    <label class="text-[10px] text-slate-400 font-semibold block mb-1">Hari</label>
-                    <input type="text" id="bookingDay" readonly class="w-full bg-slate-950/50 border border-slate-800 text-slate-400 rounded-xl p-2 text-xs font-bold" value="-">
-                </div>
-            </div>
-            <p id="selectedDateDisplay" class="text-[11px] text-slate-400 text-center font-medium pt-1"></p>
+            <!-- Hidden Input File / Data Target -->
+            <input type="hidden" id="bookingDate">
         </section>
 
         <!-- STEP 2: GRID GELANGGANG & SLOT -->
@@ -109,7 +90,7 @@
 
             <!-- Visual Court Grid Container -->
             <div id="visualCourtGrid" class="space-y-3">
-                <!-- Rendered dynamically by JavaScript -->
+                <!-- Rendered dynamically by JS -->
             </div>
         </section>
 
@@ -119,7 +100,6 @@
                 <span>👤</span> 3. Maklumat & Kelengkapan
             </h2>
 
-            <!-- Saved User Profile Inputs -->
             <div class="space-y-2">
                 <div>
                     <label class="text-[11px] text-slate-400 font-medium block mb-1">Nama Penuh</label>
@@ -137,7 +117,6 @@
             <div class="space-y-3">
                 <h3 class="text-xs font-bold text-slate-300">Sewa/Beli Peralatan</h3>
 
-                <!-- Paddle Rental -->
                 <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                     <div>
                         <div class="text-xs font-bold text-slate-200">Sewa Paddle</div>
@@ -150,7 +129,6 @@
                     </div>
                 </div>
 
-                <!-- Standard Ball -->
                 <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                     <div>
                         <div class="text-xs font-bold text-slate-200">Bola Standard</div>
@@ -163,7 +141,6 @@
                     </div>
                 </div>
 
-                <!-- Premium Ball -->
                 <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                     <div>
                         <div class="text-xs font-bold text-slate-200">Bola Premium (3-Pack)</div>
@@ -219,7 +196,6 @@
                 </div>
             </div>
 
-            <!-- Payment Method Selector -->
             <div>
                 <label class="text-[11px] text-slate-400 font-medium block mb-1">Pilih Kaedah Bayaran</label>
                 <select id="paymentMethod" onchange="togglePaymentQR()" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs font-bold focus:ring-1 focus:ring-amber-500 outline-none">
@@ -228,7 +204,6 @@
                 </select>
             </div>
 
-            <!-- QR Code Merchant Card -->
             <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center space-y-3">
                 <div id="qrTitle" class="text-xs font-bold text-amber-400">Imbas Kod QR DuitNow</div>
                 
@@ -244,19 +219,17 @@
                 </div>
             </div>
 
-            <!-- Proof Upload Input -->
             <div>
                 <label class="text-[11px] text-slate-400 font-medium block mb-1">Muat Naik Resit Bayaran (Wajib)</label>
                 <input type="file" id="paymentProof" accept="image/*" class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-amber-400 hover:file:bg-slate-700 border border-slate-800 rounded-xl bg-slate-950">
             </div>
 
-            <!-- Submit Button -->
             <button type="button" onclick="generateReceipt()" class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-98 text-slate-950 font-black rounded-xl text-sm shadow-lg shadow-amber-500/20 transition">
                 HANTAR TEMPAHAN NOW
             </button>
         </section>
 
-        <!-- RECEIPT / TICKET SECTION -->
+        <!-- RECEIPT SECTION -->
         <section id="receiptSection" class="hidden bg-slate-900 border border-amber-500/50 rounded-2xl p-5 shadow-2xl space-y-4 text-center">
             <div class="inline-block p-2 bg-emerald-500/10 text-emerald-400 rounded-full text-2xl mb-1">🎉</div>
             <h2 class="text-base font-black text-white">TEMPAHAN BERHASIL!</h2>
@@ -280,16 +253,14 @@
 
     </main>
 
-    <!-- ADMIN / OWNER MODAL -->
+    <!-- ADMIN MODAL -->
     <div id="adminModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            
             <div class="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
                 <h3 class="font-bold text-sm text-white">⚙️ Control Center Owner</h3>
                 <button onclick="closeAdminModal()" class="text-slate-400 hover:text-white font-bold text-sm">✕</button>
             </div>
 
-            <!-- Modal Navigation Tabs -->
             <div class="flex border-b border-slate-800 text-xs bg-slate-950 px-2 overflow-x-auto no-scrollbar">
                 <button id="tabLaporanBtn" onclick="switchTab('laporan')" class="py-2.5 px-3 font-bold border-b-2 border-amber-500 text-amber-500">Laporan</button>
                 <button id="tabHargaBtn" onclick="switchTab('harga')" class="py-2.5 px-3 text-slate-400 hover:text-white">Harga</button>
@@ -298,8 +269,6 @@
             </div>
 
             <div class="p-4 overflow-y-auto space-y-4 text-xs flex-1">
-                
-                <!-- TAB 1: LAPORAN TEMPAHAN -->
                 <div id="tabLaporan" class="space-y-3">
                     <div class="grid grid-cols-2 gap-2">
                         <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
@@ -323,14 +292,11 @@
                                     <th class="p-2 text-center">Tindakan</th>
                                 </tr>
                             </thead>
-                            <tbody id="bookingHistoryTable">
-                                <!-- Dynamic rows -->
-                            </tbody>
+                            <tbody id="bookingHistoryTable"></tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- TAB 2: TETAPAN HARGA -->
                 <div id="tabHarga" class="hidden space-y-3">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -358,7 +324,6 @@
                     </div>
                 </div>
 
-                <!-- TAB 3: TETAPAN BANK & QR -->
                 <div id="tabQr" class="hidden space-y-3">
                     <div>
                         <label class="text-[10px] text-slate-400">Nama Bank DuitNow</label>
@@ -391,7 +356,6 @@
                     </div>
                 </div>
 
-                <!-- TAB 4: TETAPAN GELANGGANG -->
                 <div id="tabCourt" class="hidden space-y-3">
                     <label class="flex items-center gap-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                         <input type="checkbox" id="court1Active" class="rounded text-amber-500 focus:ring-0">
@@ -406,7 +370,6 @@
                         <span>Court 3 (Open) - Buka</span>
                     </label>
                 </div>
-
             </div>
 
             <div class="p-3 bg-slate-950 border-t border-slate-800 flex justify-end">
@@ -415,9 +378,9 @@
         </div>
     </div>
 
-    <!-- MAIN JAVASCRIPT LOGIC -->
+    <!-- MAIN JAVASCRIPT -->
     <script>
-        // --- 1. DYNAMIC PWA MANIFEST CREATOR (AUTOMATIK BINA APP TELEFON) ---
+        // Dynamic PWA
         (function initDynamicPWA() {
             const manifestData = {
                 "name": "EM6 Pickleball Arena",
@@ -428,19 +391,16 @@
                 "theme_color": "#0f172a",
                 "orientation": "portrait",
                 "icons": [{
-                    "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏓</text></svg>",
+                    "src": "logo-em6.png",
                     "sizes": "192x192 512x512",
-                    "type": "image/svg+xml"
+                    "type": "image/png"
                 }]
             };
-            const stringManifest = JSON.stringify(manifestData);
-            const blob = new Blob([stringManifest], {type: 'application/json'});
-            const manifestURL = URL.createObjectURL(blob);
-            document.getElementById('manifestLink').setAttribute('href', manifestURL);
+            const blob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
+            document.getElementById('manifestLink').setAttribute('href', URL.createObjectURL(blob));
         })();
 
-        // --- 2. CONFIGURATION & STATE ---
-        const FIREBASE_DATABASE_URL = ""; // Masukkan URL Firebase Realtime Database anda jika ada
+        const FIREBASE_DATABASE_URL = ""; 
         const OWNER_WHATSAPP = "60179610108"; 
 
         let db = null;
@@ -494,17 +454,77 @@
         let allBookings = {};
         let currentGeneratedRef = "";
 
-        // --- 3. INIT & LOCAL STORAGE AUTOFILL ---
         window.addEventListener('DOMContentLoaded', () => {
             initFirebase();
-            setDefaultDate();
+            generateInteractiveDateBar();
             initPriceInputs();
             loadSavedCustomerInfo();
         });
 
-        function saveCustomerInfoLocally(name, phone) {
-            localStorage.setItem("em6_cust_name", name);
-            localStorage.setItem("em6_cust_phone", phone);
+        // --- BINA PILIHAN TARIKH INTERAKTIF (KLIK SAHAJA) ---
+        function generateInteractiveDateBar() {
+            const container = document.getElementById("dateSelectorContainer");
+            container.innerHTML = "";
+
+            const daysMalay = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
+            const monthsMalay = ["Jan", "Feb", "Mac", "Apr", "Mei", "Jun", "Jul", "Ogo", "Sep", "Okt", "Nov", "Dis"];
+
+            const today = new Date();
+
+            for (let i = 0; i < 14; i++) {
+                const targetDate = new Date();
+                targetDate.setDate(today.getDate() + i);
+
+                const yyyy = targetDate.getFullYear();
+                const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+                const dd = String(targetDate.getDate()).padStart(2, '0');
+                const dateISO = `${yyyy}-${mm}-${dd}`;
+
+                const dayName = daysMalay[targetDate.getDay()];
+                const dayNum = targetDate.getDate();
+                const monthName = monthsMalay[targetDate.getMonth()];
+
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.id = `date-btn-${dateISO}`;
+                btn.onclick = () => selectDateInteractive(dateISO, `${dayName}, ${dayNum} ${monthName}`);
+
+                btn.className = `flex-shrink-0 w-16 py-2.5 px-2 rounded-xl text-center border transition flex flex-col items-center gap-0.5 ${
+                    i === 0 
+                    ? "bg-amber-500 border-amber-400 text-slate-950 font-black shadow-md shadow-amber-500/20" 
+                    : "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700"
+                }`;
+
+                btn.innerHTML = `
+                    <span class="text-[10px] uppercase font-bold tracking-wider opacity-80">${i === 0 ? 'HARI INI' : dayName}</span>
+                    <span class="text-base font-black leading-none">${dayNum}</span>
+                    <span class="text-[9px] font-semibold opacity-75">${monthName}</span>
+                `;
+
+                container.appendChild(btn);
+
+                if (i === 0) {
+                    selectDateInteractive(dateISO, `${dayName}, ${dayNum} ${monthName}`);
+                }
+            }
+        }
+
+        function selectDateInteractive(dateISO, labelText) {
+            document.querySelectorAll("#dateSelectorContainer button").forEach(b => {
+                b.className = "flex-shrink-0 w-16 py-2.5 px-2 rounded-xl text-center border transition flex flex-col items-center gap-0.5 bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700";
+            });
+
+            const activeBtn = document.getElementById(`date-btn-${dateISO}`);
+            if (activeBtn) {
+                activeBtn.className = "flex-shrink-0 w-16 py-2.5 px-2 rounded-xl text-center border transition flex flex-col items-center gap-0.5 bg-amber-500 border-amber-400 text-slate-950 font-black shadow-md shadow-amber-500/20";
+            }
+
+            document.getElementById("bookingDate").value = dateISO;
+            document.getElementById("selectedDateBadge").innerText = labelText;
+
+            selectedSlots = [];
+            calculateTotal();
+            renderCourtGrid();
         }
 
         function loadSavedCustomerInfo() {
@@ -512,19 +532,6 @@
             const savedPhone = localStorage.getItem("em6_cust_phone");
             if(savedName) document.getElementById("custName").value = savedName;
             if(savedPhone) document.getElementById("custPhone").value = savedPhone;
-        }
-
-        function setQuickDate(daysToAdd) {
-            const targetDate = new Date();
-            targetDate.setDate(targetDate.getDate() + daysToAdd);
-            
-            const yyyy = targetDate.getFullYear();
-            const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
-            const dd = String(targetDate.getDate()).padStart(2, '0');
-            
-            const formattedDate = `${yyyy}-${mm}-${dd}`;
-            document.getElementById("bookingDate").value = formattedDate;
-            onDateChange();
         }
 
         function initFirebase() {
@@ -557,200 +564,157 @@
                     db.ref("bookings").on("value", (snapshot) => {
                         allBookings = snapshot.val() || {};
                         renderCourtGrid();
-                        renderBookingTable();
+                        renderAdminBookings();
                     });
-
                 } else {
-                    updateSyncStatus(false, "Penyimpanan Lokal");
+                    updateSyncStatus(false, "Mod Tempatan (Luar Talian)");
                     renderCourtGrid();
                 }
-            } catch (e) {
-                console.error("Firebase Error:", e);
-                updateSyncStatus(false, "Ralat Sambungan");
+            } catch (err) {
+                console.error("Firebase init error:", err);
+                updateSyncStatus(false, "Ralat Firebase");
                 renderCourtGrid();
             }
         }
 
-        function updateSyncStatus(connected, text) {
-            const statusDot = document.getElementById("syncStatus");
-            const statusText = document.getElementById("syncText");
-            if (connected) {
-                statusDot.className = "inline-block w-2 h-2 bg-emerald-500 rounded-full animate-pulse";
-                statusText.innerText = text;
-                statusText.className = "text-emerald-400 font-semibold";
+        function updateSyncStatus(isLive, text) {
+            const dot = document.getElementById("syncStatus");
+            const txt = document.getElementById("syncText");
+            txt.innerText = text;
+            if (isLive) {
+                dot.className = "inline-block w-2 h-2 bg-emerald-500 rounded-full animate-pulse";
             } else {
-                statusDot.className = "inline-block w-2 h-2 bg-amber-500 rounded-full";
-                statusText.innerText = text;
-                statusText.className = "text-amber-400 font-semibold";
+                dot.className = "inline-block w-2 h-2 bg-amber-500 rounded-full";
             }
         }
 
-        function setDefaultDate() {
-            const today = new Date();
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            const formattedDate = `${yyyy}-${mm}-${dd}`;
-            
-            const dateInput = document.getElementById("bookingDate");
-            dateInput.value = formattedDate;
-            dateInput.min = formattedDate;
-            
-            updateDayFromDate(formattedDate);
-        }
-
-        function updateDayFromDate(dateStr) {
-            const daysMap = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
-            const d = new Date(dateStr);
-            if (!isNaN(d.getTime())) {
-                const dayName = daysMap[d.getDay()];
-                document.getElementById("bookingDay").value = dayName;
-                document.getElementById("selectedDateDisplay").innerText = `Tarikh Dipilih: ${dateStr} (${dayName})`;
-            }
-        }
-
-        function onDateChange() {
-            const dateVal = document.getElementById("bookingDate").value;
-            updateDayFromDate(dateVal);
-            selectedSlots = [];
-            renderCourtGrid();
-            calculateTotal();
-        }
-
-        // --- 4. RENDER COURT GRID ---
         function renderCourtGrid() {
             const container = document.getElementById("visualCourtGrid");
-            const selectedDate = document.getElementById("bookingDate").value;
             container.innerHTML = "";
 
-            COURTS_DATA.forEach((court, idx) => {
-                const courtNum = idx + 1;
-                const isActive = settings[`court${courtNum}Active`];
+            const selectedDate = document.getElementById("bookingDate").value;
+
+            COURTS_DATA.forEach(court => {
+                const isActiveKey = `${court.id}Active`;
+                const isCourtActive = settings[isActiveKey] !== false;
 
                 const courtCard = document.createElement("div");
-                courtCard.className = `p-3 rounded-2xl border ${isActive ? 'bg-slate-900 border-slate-800 shadow-md' : 'bg-slate-900/40 border-slate-900 opacity-40'}`;
+                courtCard.className = "bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-md space-y-2.5";
 
-                let html = `
-                    <div class="flex justify-between items-center mb-2.5 pb-2 border-b border-slate-800">
-                        <h3 class="font-extrabold text-xs text-amber-400 flex items-center gap-1.5">
-                            <span>🎾</span> ${court.name}
-                        </h3>
-                        ${!isActive ? '<span class="text-[9px] bg-rose-950 text-rose-300 px-2 py-0.5 rounded-full font-bold">Tutup</span>' : ''}
+                const courtHeader = document.createElement("div");
+                courtHeader.className = "flex justify-between items-center border-b border-slate-800 pb-2";
+                
+                courtHeader.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full ${isCourtActive ? 'bg-emerald-500' : 'bg-red-500'}"></span>
+                        <h3 class="text-xs font-bold text-white">${court.name}</h3>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto no-scrollbar">
+                    <span class="text-[10px] text-slate-400 font-medium">${isCourtActive ? 'Tersedia' : 'Tutup'}</span>
                 `;
+                courtCard.appendChild(courtHeader);
+
+                if (!isCourtActive) {
+                    const closedMsg = document.createElement("div");
+                    closedMsg.className = "text-center py-4 text-xs text-slate-500 italic";
+                    closedMsg.innerText = "Gelanggang tidak dibuka untuk tempahan.";
+                    courtCard.appendChild(closedMsg);
+                    container.appendChild(courtCard);
+                    return;
+                }
+
+                const slotsGrid = document.createElement("div");
+                slotsGrid.className = "grid grid-cols-4 gap-1.5";
 
                 ALL_SLOTS.forEach(slot => {
-                    if (!isActive) {
-                        html += `<button disabled class="p-2 text-xs rounded-xl bg-slate-950 text-slate-700 border border-slate-900 cursor-not-allowed text-left">${slot.displayTime}</button>`;
-                        return;
+                    let isBooked = false;
+                    if (allBookings[selectedDate]) {
+                        Object.values(allBookings[selectedDate]).forEach(b => {
+                            if (b.slots && b.slots.some(s => s.courtId === court.id && s.startHour === slot.startHour)) {
+                                isBooked = true;
+                            }
+                        });
                     }
 
-                    const slotStatus = getSlotStatus(selectedDate, court.id, slot.startHour);
                     const isSelected = selectedSlots.some(s => s.courtId === court.id && s.startHour === slot.startHour);
 
-                    let btnClass = "";
-                    let disabledAttr = "";
-                    let badgeStatus = "";
-
-                    if (slotStatus === "Diluluskan") {
-                        btnClass = "bg-rose-950/40 border-rose-900/40 text-rose-400/60 cursor-not-allowed";
-                        disabledAttr = "disabled";
-                        badgeStatus = "🔴 Ditempah";
-                    } else if (slotStatus === "Menunggu Kelulusan") {
-                        btnClass = "bg-amber-950/40 border-amber-900/40 text-amber-300/60 cursor-not-allowed";
-                        disabledAttr = "disabled";
-                        badgeStatus = "⏳ Process";
+                    const slotBtn = document.createElement("button");
+                    slotBtn.type = "button";
+                    
+                    let btnClass = "py-2 px-1 rounded-xl text-[10px] font-bold transition flex flex-col items-center justify-center gap-0.5 active:scale-95 border ";
+                    
+                    if (isBooked) {
+                        btnClass += "bg-red-950/40 border-red-900/50 text-red-400 cursor-not-allowed opacity-60";
+                        slotBtn.disabled = true;
                     } else if (isSelected) {
-                        btnClass = "bg-amber-500 border-amber-400 text-slate-950 font-black shadow-lg shadow-amber-500/20";
-                        badgeStatus = "✓ Dipilih";
+                        btnClass += "bg-amber-500 border-amber-400 text-slate-950 shadow-md shadow-amber-500/20";
                     } else {
-                        btnClass = "bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-200 active:scale-95";
-                        badgeStatus = slot.type === 'peak' ? '🔥 Peak' : '🌿 Off-Peak';
+                        btnClass += "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700";
                     }
 
-                    html += `
-                        <button type="button" ${disabledAttr} onclick="toggleSlotSelect('${court.id}', '${court.name}', ${slot.startHour}, '${slot.displayTime}', '${slot.type}')" 
-                            class="p-2 text-xs rounded-xl border transition-all duration-150 text-left flex flex-col justify-between h-13 ${btnClass}">
-                            <span class="font-bold">${slot.displayTime}</span>
-                            <span class="text-[9px] font-semibold opacity-90">${badgeStatus}</span>
-                        </button>
+                    slotBtn.className = btnClass;
+                    
+                    const priceLabel = slot.type === "peak" ? `RM${settings.peakPrice}` : `RM${settings.offpeakPrice}`;
+                    const badgeType = slot.type === "peak" ? `<span class="text-[8px] opacity-75">PEAK</span>` : `<span class="text-[8px] opacity-60">OFF</span>`;
+
+                    slotBtn.innerHTML = `
+                        <span>${slot.displayTime}</span>
+                        <div class="flex items-center gap-1">
+                            <span class="text-[9px] font-mono">${priceLabel}</span>
+                            ${badgeType}
+                        </div>
                     `;
+
+                    if (!isBooked) {
+                        slotBtn.onclick = () => toggleSlotSelection(court.id, court.name, slot);
+                    }
+
+                    slotsGrid.appendChild(slotBtn);
                 });
 
-                html += `</div>`;
-                courtCard.innerHTML = html;
+                courtCard.appendChild(slotsGrid);
                 container.appendChild(courtCard);
             });
         }
 
-        function getSlotStatus(date, courtId, startHour) {
-            for (let ref in allBookings) {
-                const b = allBookings[ref];
-                if (b.bookingDate === date && b.status !== "Ditolak") {
-                    if (b.slots && Array.isArray(b.slots)) {
-                        const match = b.slots.find(s => s.courtId === courtId && s.startHour === startHour);
-                        if (match) return b.status || "Diluluskan";
-                    }
-                }
-            }
-            return null;
-        }
-
-        function toggleSlotSelect(courtId, courtName, startHour, displayTime, type) {
-            const index = selectedSlots.findIndex(s => s.courtId === courtId && s.startHour === startHour);
+        function toggleSlotSelection(courtId, courtName, slot) {
+            const index = selectedSlots.findIndex(s => s.courtId === courtId && s.startHour === slot.startHour);
             if (index > -1) {
                 selectedSlots.splice(index, 1);
             } else {
-                selectedSlots.push({ courtId, courtName, startHour, displayTime, type });
+                selectedSlots.push({
+                    courtId,
+                    courtName,
+                    startHour: slot.startHour,
+                    displayTime: slot.displayTime,
+                    type: slot.type
+                });
             }
             renderCourtGrid();
             calculateTotal();
         }
 
-        // --- 5. LOGIK KIRAAN & ADD-ONS ---
-        function adjustQty(id, delta) {
-            const input = document.getElementById(id);
+        function adjustQty(inputId, delta) {
+            const input = document.getElementById(inputId);
             let val = parseInt(input.value) || 0;
-            val += delta;
-            if (val < 0) val = 0;
+            val = Math.max(0, val + delta);
             input.value = val;
             calculateTotal();
         }
 
         function calculateTotal() {
             let totalCourt = 0;
-            let offpeakCount = 0;
-            let peakCount = 0;
+            let countOffPeak = 0;
+            let countPeak = 0;
 
             selectedSlots.forEach(s => {
-                if (s.type === 'peak') {
+                if (s.type === "peak") {
                     totalCourt += parseFloat(settings.peakPrice);
-                    peakCount++;
+                    countPeak++;
                 } else {
                     totalCourt += parseFloat(settings.offpeakPrice);
-                    offpeakCount++;
+                    countOffPeak++;
                 }
             });
-
-            const slotTextDiv = document.getElementById("selectedCourtTimeText");
-            document.getElementById("durationBadge").innerText = `${selectedSlots.length} Jam Dipilih`;
-
-            if (selectedSlots.length === 0) {
-                slotTextDiv.innerHTML = `<span class="text-slate-500 italic">Sila pilih slot di atas...</span>`;
-            } else {
-                let grouped = {};
-                selectedSlots.forEach(s => {
-                    if (!grouped[s.courtName]) grouped[s.courtName] = [];
-                    grouped[s.courtName].push(s.displayTime);
-                });
-
-                let summaryHtml = "";
-                for (let cName in grouped) {
-                    summaryHtml += `<div class="mb-1"><b class="text-amber-400">${cName}:</b> ${grouped[cName].join(", ")}</div>`;
-                }
-                slotTextDiv.innerHTML = summaryHtml;
-            }
 
             const paddleQty = parseInt(document.getElementById("paddleQty").value) || 0;
             const ballStdQty = parseInt(document.getElementById("ballStdQty").value) || 0;
@@ -762,142 +726,164 @@
 
             const grandTotal = totalCourt + totalPaddle + totalBallStd + totalBallPrem;
 
+            document.getElementById("durationBadge").innerText = `${selectedSlots.length} Jam Dipilih`;
             document.getElementById("courtPriceDisplay").innerText = `RM ${totalCourt.toFixed(2)}`;
-            document.getElementById("hoursBreakdownDisplay").innerText = `(${offpeakCount}j Off-Peak @ RM${settings.offpeakPrice}, ${peakCount}j Peak @ RM${settings.peakPrice})`;
+            document.getElementById("hoursBreakdownDisplay").innerText = `(${countOffPeak}j Off-Peak, ${countPeak}j Peak)`;
+            
             document.getElementById("paddlePriceDisplay").innerText = `RM ${totalPaddle.toFixed(2)}`;
             document.getElementById("ballStdPriceDisplay").innerText = `RM ${totalBallStd.toFixed(2)}`;
             document.getElementById("ballPremPriceDisplay").innerText = `RM ${totalBallPrem.toFixed(2)}`;
+            
             document.getElementById("totalPriceDisplay").innerText = `RM ${grandTotal.toFixed(2)}`;
             document.getElementById("qrAmountDisplay").innerText = `RM ${grandTotal.toFixed(2)}`;
 
-            return grandTotal;
+            const textSummary = document.getElementById("selectedCourtTimeText");
+            if (selectedSlots.length === 0) {
+                textSummary.innerHTML = `<span class="text-slate-500 italic">Sila pilih slot di atas...</span>`;
+            } else {
+                const grouped = {};
+                selectedSlots.forEach(s => {
+                    if (!grouped[s.courtName]) grouped[s.courtName] = [];
+                    grouped[s.courtName].push(s.displayTime);
+                });
+                
+                let html = "";
+                Object.keys(grouped).forEach(cName => {
+                    html += `<div><b class="text-amber-400">${cName}:</b> ${grouped[cName].join(", ")}</div>`;
+                });
+                textSummary.innerHTML = html;
+            }
         }
 
         function togglePaymentQR() {
             const method = document.getElementById("paymentMethod").value;
-            const qrTitle = document.getElementById("qrTitle");
-            const qrImg = document.getElementById("merchantQrImg");
+            const title = document.getElementById("qrTitle");
             const bankName = document.getElementById("displayBankName");
             const accName = document.getElementById("displayAccName");
             const accNo = document.getElementById("displayAccNo");
+            const qrImg = document.getElementById("merchantQrImg");
 
             if (method === "tng") {
-                qrTitle.innerText = "Imbas QR Touch 'n Go eWallet";
-                qrImg.src = settings.tngQrImg || "qr-tng.png";
-                bankName.innerText = "Touch 'n Go eWallet";
-                accName.innerText = settings.tngAccName || "-";
-                accNo.innerText = settings.tngAccNo || "-";
+                title.innerText = "Imbas Kod QR Touch 'n Go";
+                bankName.innerText = "TNG eWallet";
+                accName.innerText = settings.tngAccName;
+                accNo.innerText = settings.tngAccNo;
+                qrImg.src = settings.tngQrImg;
             } else {
-                qrTitle.innerText = "Imbas Kod QR DuitNow";
-                qrImg.src = settings.duitNowQrImg || "qr-duitnow.png";
-                bankName.innerText = settings.bankName || "Maybank";
-                accName.innerText = settings.bankAccName || "-";
-                accNo.innerText = settings.bankAccNo || "-";
+                title.innerText = "Imbas Kod QR DuitNow";
+                bankName.innerText = settings.bankName;
+                accName.innerText = settings.bankAccName;
+                accNo.innerText = settings.bankAccNo;
+                qrImg.src = settings.duitNowQrImg;
             }
         }
 
-        // --- 6. HANTAR TEMPAHAN & RESIT ---
         function generateReceipt() {
             const name = document.getElementById("custName").value.trim();
             const phone = document.getElementById("custPhone").value.trim();
-            const date = document.getElementById("bookingDate").value;
-            const day = document.getElementById("bookingDay").value;
             const proofFile = document.getElementById("paymentProof").files[0];
-            const totalAmount = calculateTotal();
 
-            if (!name || !phone) {
-                alert("Sila lengkapkan Nama dan Nombor WhatsApp anda.");
+            if (selectedSlots.length === 0) {
+                alert("Sila pilih sekurang-kurangnya satu slot gelanggang.");
                 return;
             }
-            if (selectedSlots.length === 0) {
-                alert("Sila pilih sekurang-kurangnya 1 slot masa.");
+            if (!name || !phone) {
+                alert("Sila isi Nama Penuh dan Nombor WhatsApp anda.");
                 return;
             }
             if (!proofFile) {
-                alert("Sila muat naik bukti resit bayaran.");
+                alert("Sila muat naik resit bukti pembayaran.");
                 return;
             }
 
-            saveCustomerInfoLocally(name, phone);
+            localStorage.setItem("em6_cust_name", name);
+            localStorage.setItem("em6_cust_phone", phone);
 
-            const timestamp = Date.now().toString().slice(-5);
-            const randomLetter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
-            currentGeneratedRef = `EM6-${randomLetter}${timestamp}`;
-
-            const bookingData = {
-                refId: currentGeneratedRef,
-                custName: name,
-                custPhone: phone,
-                bookingDate: date,
-                bookingDay: day,
-                slots: selectedSlots,
-                paddleQty: parseInt(document.getElementById("paddleQty").value) || 0,
-                ballStdQty: parseInt(document.getElementById("ballStdQty").value) || 0,
-                ballPremQty: parseInt(document.getElementById("ballPremQty").value) || 0,
-                totalAmount: totalAmount,
-                paymentMethod: document.getElementById("paymentMethod").value === "tng" ? "Touch 'n Go eWallet" : "DuitNow QR",
-                status: "Menunggu Kelulusan",
-                createdDate: new Date().toISOString()
-            };
-
-            if (isFirebaseConnected && db) {
-                db.ref("bookings/" + currentGeneratedRef).set(bookingData)
-                .then(() => displayReceiptUI(bookingData))
-                .catch(err => alert("Gagal menyimpan: " + err.message));
-            } else {
-                allBookings[currentGeneratedRef] = bookingData;
-                displayReceiptUI(bookingData);
-            }
-        }
-
-        function displayReceiptUI(data) {
-            const receiptDiv = document.getElementById("receiptSection");
-            receiptDiv.classList.remove("hidden");
-            document.getElementById("refNo").innerText = `Ref ID: ${data.refId}`;
-            document.getElementById("payMethodDisplay").innerText = `Kaedah: ${data.paymentMethod}`;
+            currentGeneratedRef = "EM6-" + Math.floor(100000 + Math.random() * 900000);
+            document.getElementById("refNo").innerText = `Ref ID: ${currentGeneratedRef}`;
+            
+            const payMethod = document.getElementById("paymentMethod").value === "tng" ? "TNG eWallet" : "DuitNow";
+            document.getElementById("payMethodDisplay").innerText = payMethod;
 
             const qrContainer = document.getElementById("qrcode");
             qrContainer.innerHTML = "";
             new QRCode(qrContainer, {
-                text: `EM6|${data.refId}|${data.custName}|RM${data.totalAmount}`,
-                width: 120,
-                height: 120
+                text: currentGeneratedRef,
+                width: 128,
+                height: 128
             });
 
-            receiptDiv.scrollIntoView({ behavior: 'smooth' });
+            const date = document.getElementById("bookingDate").value;
+            const newBooking = {
+                refId: currentGeneratedRef,
+                customerName: name,
+                customerPhone: phone,
+                slots: selectedSlots,
+                date: date,
+                paymentMethod: payMethod,
+                totalAmount: document.getElementById("totalPriceDisplay").innerText,
+                status: "Pending Verification",
+                timestamp: Date.now()
+            };
+
+            if (isFirebaseConnected && db) {
+                db.ref(`bookings/${date}/${currentGeneratedRef}`).set(newBooking);
+            } else {
+                if (!allBookings[date]) allBookings[date] = {};
+                allBookings[date][currentGeneratedRef] = newBooking;
+                renderCourtGrid();
+            }
+
+            const receiptSec = document.getElementById("receiptSection");
+            receiptSec.classList.remove("hidden");
+            receiptSec.scrollIntoView({ behavior: 'smooth' });
         }
 
         function sendToWhatsappOwner() {
-            if (!currentGeneratedRef || !allBookings[currentGeneratedRef]) {
-                alert("Tiada tempahan ditemui.");
-                return;
-            }
+            const name = document.getElementById("custName").value.trim();
+            const phone = document.getElementById("custPhone").value.trim();
+            const date = document.getElementById("bookingDate").value;
+            const total = document.getElementById("totalPriceDisplay").innerText;
 
-            const b = allBookings[currentGeneratedRef];
             let slotText = "";
-            b.slots.forEach(s => {
-                slotText += `\n  • ${s.courtName}: ${s.displayTime}`;
+            const grouped = {};
+            selectedSlots.forEach(s => {
+                if (!grouped[s.courtName]) grouped[s.courtName] = [];
+                grouped[s.courtName].push(s.displayTime);
+            });
+            Object.keys(grouped).forEach(cName => {
+                slotText += `\n- *${cName}*: ${grouped[cName].join(", ")}`;
             });
 
-            const msg = `Salam Owner EM6 Pickleball, saya nak sahkan tempahan:\n\n` +
-                        `🔖 *Ref ID:* ${b.refId}\n` +
-                        `👤 *Nama:* ${b.custName}\n` +
-                        `📱 *WhatsApp:* ${b.custPhone}\n` +
-                        `📅 *Tarikh:* ${b.bookingDate} (${b.bookingDay})\n` +
-                        `🎾 *Gelanggang & Masa:*${slotText}\n` +
-                        `🏓 *Add-ons:* Paddle (${b.paddleQty}), Bola Std (${b.ballStdQty}), Bola Prem (${b.ballPremQty})\n` +
-                        `💰 *Jumlah:* RM ${parseFloat(b.totalAmount).toFixed(2)}\n\n` +
-                        `*Saya lampirkan resit bayaran di bawah. Terima kasih!*`;
+            const paddleQty = document.getElementById("paddleQty").value;
+            const ballStdQty = document.getElementById("ballStdQty").value;
+            const ballPremQty = document.getElementById("ballPremQty").value;
 
-            window.open(`https://wa.me/${OWNER_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
+            let addOnText = "";
+            if (paddleQty > 0) addOnText += `\n- Sewa Paddle: ${paddleQty} unit`;
+            if (ballStdQty > 0) addOnText += `\n- Bola Standard: ${ballStdQty} unit`;
+            if (ballPremQty > 0) addOnText += `\n- Bola Premium: ${ballPremQty} pek`;
+
+            const message = `*TEMPAHAN GELANGGANG EM6 ARENA*\n` +
+                `----------------------------------\n` +
+                `*Ref ID:* ${currentGeneratedRef}\n` +
+                `*Nama:* ${name}\n` +
+                `*No. Tel:* ${phone}\n` +
+                `*Tarikh:* ${date}\n` +
+                `*Gelanggang & Slot:* ${slotText}\n` +
+                (addOnText ? `*Tambahan:*${addOnText}\n` : '') +
+                `*Jumlah Bayaran:* ${total}\n` +
+                `----------------------------------\n` +
+                ` Saya telah membuat pembayaran dan menyertakan resit bayaran. Sila sahkan tempahan saya. Terima kasih!`;
+
+            window.open(`https://wa.me/${OWNER_WHATSAPP}?text=${encodeURIComponent(message)}`, '_blank');
         }
 
-        // --- 7. OWNER DASHBOARD & SETTINGS ---
         function openAdminModal() {
-            const pin = prompt("Masukkan PIN Owner:");
+            const pin = prompt("Masukkan PIN Owner untuk log masuk:");
             if (pin === settings.ownerPin) {
                 document.getElementById("adminModal").classList.remove("hidden");
-                switchTab('laporan');
+                renderAdminBookings();
             } else if (pin !== null) {
                 alert("PIN Salah!");
             }
@@ -908,58 +894,15 @@
         }
 
         function switchTab(tabName) {
-            ['laporan', 'harga', 'qr', 'court'].forEach(t => {
-                const tabEl = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
-                const btnEl = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}Btn`);
-                if (tabEl) tabEl.classList.toggle("hidden", t !== tabName);
-                if (btnEl) btnEl.className = t === tabName ? "py-2.5 px-3 font-bold border-b-2 border-amber-500 text-amber-500" : "py-2.5 px-3 text-slate-400 hover:text-white";
-            });
-        }
-
-        function renderBookingTable() {
-            const tbody = document.getElementById("bookingHistoryTable");
-            tbody.innerHTML = "";
-            let totalRev = 0, count = 0;
-
-            Object.keys(allBookings).sort((a,b) => new Date(allBookings[b].createdDate || 0) - new Date(allBookings[a].createdDate || 0))
-            .forEach(refId => {
-                const b = allBookings[refId];
-                count++;
-                if (b.status === "Diluluskan") totalRev += parseFloat(b.totalAmount || 0);
-
-                let statusBadge = b.status === "Diluluskan" ? `<span class="bg-emerald-950 text-emerald-400 border border-emerald-800 px-1.5 py-0.5 rounded text-[9px] font-bold">Lulus</span>` :
-                                  b.status === "Ditolak" ? `<span class="bg-rose-950 text-rose-400 border border-rose-800 px-1.5 py-0.5 rounded text-[9px] font-bold">Tolak</span>` :
-                                  `<span class="bg-amber-950 text-amber-400 border border-amber-800 px-1.5 py-0.5 rounded text-[9px] font-bold">Wait</span>`;
-
-                const tr = document.createElement("tr");
-                tr.className = "border-b border-slate-800 hover:bg-slate-800/50";
-                tr.innerHTML = `
-                    <td class="p-2 font-mono font-bold text-[10px] text-amber-400">${b.refId}</td>
-                    <td class="p-2 text-[10px]"><b>${b.custName}</b><br><span class="text-slate-500">${b.custPhone}</span></td>
-                    <td class="p-2 font-bold text-[10px]">RM${parseFloat(b.totalAmount).toFixed(2)}</td>
-                    <td class="p-2 text-center">${statusBadge}</td>
-                    <td class="p-2 text-center space-x-1">
-                        <button onclick="updateBookingStatus('${b.refId}', 'Diluluskan')" class="bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">✓</button>
-                        <button onclick="updateBookingStatus('${b.refId}', 'Ditolak')" class="bg-rose-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">✕</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+            ["laporan", "harga", "qr", "court"].forEach(t => {
+                document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.add("hidden");
+                const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}Btn`);
+                btn.className = "py-2.5 px-3 text-slate-400 hover:text-white";
             });
 
-            document.getElementById("totalRevenue").innerText = `RM ${totalRev.toFixed(2)}`;
-            document.getElementById("bookingCount").innerText = count;
-        }
-
-        function updateBookingStatus(refId, newStatus) {
-            if (isFirebaseConnected && db) {
-                db.ref(`bookings/${refId}/status`).set(newStatus);
-            } else {
-                if (allBookings[refId]) {
-                    allBookings[refId].status = newStatus;
-                    renderCourtGrid();
-                    renderBookingTable();
-                }
-            }
+            document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.remove("hidden");
+            const activeBtn = document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}Btn`);
+            activeBtn.className = "py-2.5 px-3 font-bold border-b-2 border-amber-500 text-amber-500";
         }
 
         function initPriceInputs() {
@@ -973,26 +916,26 @@
             document.getElementById("labelBallStd").innerText = parseFloat(settings.ballStdPrice).toFixed(2);
             document.getElementById("labelBallPrem").innerText = parseFloat(settings.ballPremPrice).toFixed(2);
 
-            document.getElementById("settingBankName").value = settings.bankName || "";
-            document.getElementById("settingBankAccNo").value = settings.bankAccNo || "";
-            document.getElementById("settingBankAccName").value = settings.bankAccName || "";
-            document.getElementById("settingDuitNowQr").value = settings.duitNowQrImg || "";
+            document.getElementById("settingBankName").value = settings.bankName;
+            document.getElementById("settingBankAccNo").value = settings.bankAccNo;
+            document.getElementById("settingBankAccName").value = settings.bankAccName;
+            document.getElementById("settingDuitNowQr").value = settings.duitNowQrImg;
 
-            document.getElementById("settingTngAccNo").value = settings.tngAccNo || "";
-            document.getElementById("settingTngAccName").value = settings.tngAccName || "";
-            document.getElementById("settingTngQr").value = settings.tngQrImg || "";
+            document.getElementById("settingTngAccNo").value = settings.tngAccNo;
+            document.getElementById("settingTngAccName").value = settings.tngAccName;
+            document.getElementById("settingTngQr").value = settings.tngQrImg;
 
-            document.getElementById("court1Active").checked = settings.court1Active;
-            document.getElementById("court2Active").checked = settings.court2Active;
-            document.getElementById("court3Active").checked = settings.court3Active;
+            document.getElementById("court1Active").checked = settings.court1Active !== false;
+            document.getElementById("court2Active").checked = settings.court2Active !== false;
+            document.getElementById("court3Active").checked = settings.court3Active !== false;
         }
 
         function saveSettings() {
-            settings.offpeakPrice = parseFloat(document.getElementById("settingOffPeak").value) || 0;
-            settings.peakPrice = parseFloat(document.getElementById("settingPeak").value) || 0;
-            settings.paddlePrice = parseFloat(document.getElementById("settingPaddle").value) || 0;
-            settings.ballStdPrice = parseFloat(document.getElementById("settingBallStd").value) || 0;
-            settings.ballPremPrice = parseFloat(document.getElementById("settingBallPrem").value) || 0;
+            settings.offpeakPrice = parseFloat(document.getElementById("settingOffPeak").value) || settings.offpeakPrice;
+            settings.peakPrice = parseFloat(document.getElementById("settingPeak").value) || settings.peakPrice;
+            settings.paddlePrice = parseFloat(document.getElementById("settingPaddle").value) || settings.paddlePrice;
+            settings.ballStdPrice = parseFloat(document.getElementById("settingBallStd").value) || settings.ballStdPrice;
+            settings.ballPremPrice = parseFloat(document.getElementById("settingBallPrem").value) || settings.ballPremPrice;
 
             settings.bankName = document.getElementById("settingBankName").value;
             settings.bankAccNo = document.getElementById("settingBankAccNo").value;
@@ -1008,16 +951,69 @@
             settings.court3Active = document.getElementById("court3Active").checked;
 
             if (isFirebaseConnected && db) {
-                db.ref("settings").set(settings)
-                .then(() => alert("Tetapan Berjaya Disimpan!"))
-                .catch(err => alert("Gagal: " + err.message));
-            } else {
-                initPriceInputs();
-                renderCourtGrid();
-                calculateTotal();
-                alert("Tetapan Disimpan (Lokal)");
+                db.ref("settings").set(settings);
             }
+
+            initPriceInputs();
+            renderCourtGrid();
+            calculateTotal();
+            togglePaymentQR();
+            alert("Tetapan berjaya disimpan!");
             closeAdminModal();
+        }
+
+        function renderAdminBookings() {
+            const tableBody = document.getElementById("bookingHistoryTable");
+            tableBody.innerHTML = "";
+
+            let revenue = 0;
+            let count = 0;
+
+            Object.keys(allBookings).forEach(date => {
+                Object.keys(allBookings[date]).forEach(refId => {
+                    const b = allBookings[date][refId];
+                    count++;
+                    
+                    const amtClean = parseFloat(b.totalAmount.replace("RM", "").trim()) || 0;
+                    revenue += amtClean;
+
+                    const tr = document.createElement("tr");
+                    tr.className = "border-b border-slate-800/60 hover:bg-slate-800/30";
+
+                    tr.innerHTML = `
+                        <td class="p-2 font-mono text-slate-300">${b.refId || refId}</td>
+                        <td class="p-2">
+                            <div class="font-bold text-white">${b.customerName}</div>
+                            <div class="text-[9px] text-slate-400">${b.customerPhone}</div>
+                        </td>
+                        <td class="p-2 font-bold text-emerald-400">${b.totalAmount}</td>
+                        <td class="p-2 text-center">
+                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${b.status === 'Confirmed' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'}">
+                                ${b.status || 'Pending'}
+                            </span>
+                        </td>
+                        <td class="p-2 text-center">
+                            <button onclick="deleteBooking('${date}', '${refId}')" class="text-red-400 hover:text-red-300 font-bold px-1.5 py-0.5 bg-red-950/50 rounded border border-red-900/40">Padam</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+            });
+
+            document.getElementById("totalRevenue").innerText = `RM ${revenue.toFixed(2)}`;
+            document.getElementById("bookingCount").innerText = count;
+        }
+
+        function deleteBooking(date, refId) {
+            if (confirm("Adakah anda pasti untuk memadam tempahan ini?")) {
+                if (isFirebaseConnected && db) {
+                    db.ref(`bookings/${date}/${refId}`).remove();
+                } else {
+                    delete allBookings[date][refId];
+                    renderCourtGrid();
+                    renderAdminBookings();
+                }
+            }
         }
     </script>
 </body>
