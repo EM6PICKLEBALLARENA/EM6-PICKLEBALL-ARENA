@@ -8,6 +8,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- QR Code Generator Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- Firebase SDK (v9 Compatibility Mode) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
     <style>
         body { 
             background-color: #f3f4f6; 
@@ -28,7 +33,10 @@
                 <img src="logo.png" alt="Logo EM6 Pickleball Arena" class="h-16 w-auto object-contain" onerror="this.style.display='none'">
                 <div>
                     <h1 class="text-xl sm:text-2xl font-black text-gray-800 tracking-tight">🏓 EM6 PICKLEBALL ARENA</h1>
-                    <p class="text-gray-500 text-xs sm:text-sm">Sistem Tempahan Multi-Court & Pengesahan Resit</p>
+                    <p class="text-gray-500 text-xs sm:text-sm flex items-center justify-center sm:justify-start gap-1">
+                        <span id="syncStatus" class="inline-block w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></span>
+                        <span id="syncText">Menyambung ke Firebase Database...</span>
+                    </p>
                 </div>
             </div>
             <button onclick="openAdminModal()" class="w-full sm:w-auto bg-gray-900 text-white text-xs px-4 py-2.5 rounded-xl hover:bg-gray-800 transition flex items-center justify-center gap-2 shadow-sm font-semibold active:scale-95">
@@ -251,7 +259,7 @@
     <div id="adminModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 overflow-y-auto">
         <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
-                <h2 class="text-lg sm:text-xl font-bold text-gray-800">⚙️ Dashboard Owner</h2>
+                <h2 class="text-lg sm:text-xl font-bold text-gray-800">⚙️ Dashboard Owner (Realtime Cloud)</h2>
                 <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600 font-bold text-2xl px-2">&times;</button>
             </div>
             
@@ -295,7 +303,7 @@
                 </div>
                 <div class="flex justify-between items-center pt-2">
                     <span class="text-xs text-gray-500">Jumlah Rekod: <b id="bookingCount">0</b></span>
-                    <button onclick="clearHistory()" class="text-xs text-red-600 hover:underline">Padam Sejarah</button>
+                    <button onclick="clearHistory()" class="text-xs text-red-600 hover:underline">Padam Sejarah Database</button>
                 </div>
             </div>
 
@@ -325,7 +333,7 @@
                         <input type="number" id="settingBallPrem" class="w-full p-2.5 border rounded-lg mt-1 text-sm">
                     </div>
                 </div>
-                <button onclick="saveAdminSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Simpan Tetapan Harga</button>
+                <button onclick="saveAdminSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Simpan Tetapan Harga Ke Cloud</button>
             </div>
 
             <!-- Tab 3: Bank/QR -->
@@ -349,7 +357,7 @@
                     <input type="text" id="settingTngQr" placeholder="Fail Gambar QR" class="w-full p-2 border rounded-lg text-xs">
                 </div>
 
-                <button onclick="saveQrSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Simpan Maklumat Akaun & QR</button>
+                <button onclick="saveQrSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Simpan Maklumat Akaun Ke Cloud</button>
             </div>
 
             <!-- Tab 4: Gelanggang -->
@@ -368,7 +376,7 @@
                         <span class="font-medium text-sm text-gray-700">Gelanggang 3 (Court 3)</span>
                     </label>
                 </div>
-                <button onclick="saveCourtSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Kemaskini Status Gelanggang</button>
+                <button onclick="saveCourtSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Kemaskini Status Gelanggang Ke Cloud</button>
             </div>
 
             <!-- Tab 5: Keselamatan -->
@@ -427,8 +435,17 @@
         </div>
     </div>
 
-    <!-- JavaScript Logik Aplikasi -->
+    <!-- JavaScript Logik Aplikasi & Firebase Sync -->
     <script>
+        // FIREBASE CONFIGURATION (PUBLIC DEMO DATABASE FOR EM6)
+        const firebaseConfig = {
+            databaseURL: "https://em6-pickleball-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
+        
+        // Inisialisasi Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         const OWNER_WHATSAPP = "60179610108";
 
         const COURTS_DATA = [
@@ -466,409 +483,435 @@
 
         const DAYS_MY = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
 
-        // Format selectedCourtSlots: [{ courtId: 'court1', startHour: 8 }, ...]
         let selectedCourtSlots = [];
-        let lastBookingData = null;
+        let currentBookingRef = "";
+        let qrCodeInstance = null;
 
+        // TETAPAN DEFAULT KEMAS KINI
         let settings = {
-            ownerPin: "1234",
-            offpeakPrice: 30,
-            peakPrice: 40,
-            paddlePrice: 5,
-            ballStdPrice: 5,
-            ballPremPrice: 19,
-            bankName: "Maybank",
-            bankAccNo: "153029150514",
-            bankAccName: "MOHD FARIS AFNAN B ZAHARI",
-            duitnowQrImg: "qr-duitnow.png",
-            tngAccNo: "121859829522",
-            tngAccName: "MOHD FARIS AFNAN B ZAHARI",
-            tngQrImg: "qr-tng.png",
-            courts: { court1: true, court2: true, court3: true },
-            bookings: []
+            offPeakPrice: 20.00,
+            peakPrice: 35.00,
+            paddlePrice: 5.00,
+            ballStdPrice: 5.00,
+            ballPremPrice: 19.00,
+            pin: "1234",
+            activeCourts: { court1: true, court2: true, court3: true },
+            qr: {
+                bankName: "Maybank",
+                accNo: "153029150514",
+                accName: "MOHD FARIS AFNAN BIN ZAHARI",
+                duitnowImg: "qr-duitnow.png",
+                tngNo: "121859829522",
+                tngName: "MOHD FARIS AFNAN BIN ZAHARI",
+                tngImg: "qr-tng.png"
+            }
         };
 
-        function loadSettings() {
-            const saved = localStorage.getItem('em6_master_settings');
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    settings = { ...settings, ...parsed };
-                } catch(e) {
-                    console.error("Gagal muat simpanan:", e);
-                }
-            }
-            
+        let bookings = [];
+
+        window.onload = function() {
             const today = new Date();
-            const dateInput = document.getElementById('bookingDate');
-            
             const yyyy = today.getFullYear();
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             const dd = String(today.getDate()).padStart(2, '0');
+            
+            const dateInput = document.getElementById('bookingDate');
             dateInput.value = `${yyyy}-${mm}-${dd}`;
             
             updateDayFromDate();
-            updateUI();
+            
+            // LISTEN TO FIREBASE REALTIME UPDATES
+            initFirebaseListeners();
+        };
+
+        function initFirebaseListeners() {
+            const syncBadge = document.getElementById('syncStatus');
+            const syncText = document.getElementById('syncText');
+
+            // 1. Listen Tetapan Owner dari Firebase Cloud
+            db.ref('em6_settings').on('value', (snapshot) => {
+                const cloudSettings = snapshot.val();
+                if(cloudSettings) {
+                    settings = cloudSettings;
+                } else {
+                    // Simpan tetapan asal jika firebase masih kosong
+                    db.ref('em6_settings').set(settings);
+                }
+                loadSettingsToUI();
+                renderVisualCourts();
+                calculateTotal();
+                togglePaymentQR();
+                
+                syncBadge.className = "inline-block w-2.5 h-2.5 bg-emerald-500 rounded-full";
+                syncText.innerText = "Terhubung ke Database Cloud (Real-time)";
+            });
+
+            // 2. Listen Senarai Tempahan dari Firebase Cloud
+            db.ref('em6_bookings').on('value', (snapshot) => {
+                const cloudBookings = snapshot.val();
+                bookings = cloudBookings ? Object.values(cloudBookings) : [];
+                
+                renderVisualCourts();
+                if(!document.getElementById('adminModal').classList.contains('hidden')) {
+                    renderAdminBookings();
+                }
+            });
         }
 
-        function saveMasterSettings() {
-            localStorage.setItem('em6_master_settings', JSON.stringify(settings));
+        function saveSettingsToCloud() {
+            db.ref('em6_settings').set(settings);
+        }
+
+        function saveBookingsToCloud() {
+            // Transform array to object indexed by refId for Firebase
+            const bookingsObj = {};
+            bookings.forEach(b => {
+                bookingsObj[b.refId] = b;
+            });
+            db.ref('em6_bookings').set(bookingsObj);
+        }
+
+        function loadSettingsToUI() {
+            document.getElementById('labelPaddle').innerText = parseFloat(settings.paddlePrice).toFixed(2);
+            document.getElementById('labelBallStd').innerText = parseFloat(settings.ballStdPrice).toFixed(2);
+            document.getElementById('labelBallPrem').innerText = parseFloat(settings.ballPremPrice).toFixed(2);
+
+            document.getElementById('settingOffPeak').value = settings.offPeakPrice;
+            document.getElementById('settingPeak').value = settings.peakPrice;
+            document.getElementById('settingPaddle').value = settings.paddlePrice;
+            document.getElementById('settingBallStd').value = settings.ballStdPrice;
+            document.getElementById('settingBallPrem').value = settings.ballPremPrice;
+
+            document.getElementById('settingBankName').value = settings.qr.bankName;
+            document.getElementById('settingBankAccNo').value = settings.qr.accNo;
+            document.getElementById('settingBankAccName').value = settings.qr.accName;
+            document.getElementById('settingDuitNowQr').value = settings.qr.duitnowImg;
+            document.getElementById('settingTngAccNo').value = settings.qr.tngNo;
+            document.getElementById('settingTngAccName').value = settings.qr.tngName;
+            document.getElementById('settingTngQr').value = settings.qr.tngImg;
+
+            document.getElementById('court1Active').checked = settings.activeCourts.court1;
+            document.getElementById('court2Active').checked = settings.activeCourts.court2;
+            document.getElementById('court3Active').checked = settings.activeCourts.court3;
         }
 
         function updateDayFromDate() {
             const dateVal = document.getElementById('bookingDate').value;
-            if (dateVal) {
-                const parts = dateVal.split('-');
-                const d = new Date(parts[0], parts[1] - 1, parts[2]);
-                const dayName = DAYS_MY[d.getDay()];
-                document.getElementById('bookingDay').value = dayName;
-                document.getElementById('selectedDateDisplay').innerText = `Paparan untuk: ${dateVal} (${dayName})`;
-            }
+            if(!dateVal) return;
+            const dateObj = new Date(dateVal);
+            const dayName = DAYS_MY[dateObj.getDay()];
+            document.getElementById('bookingDay').value = dayName;
+            document.getElementById('selectedDateDisplay').innerText = `Paparan untuk: ${dateVal} (${dayName})`;
         }
 
         function onDateChange() {
             updateDayFromDate();
-            resetSelection();
-            updateUI();
+            selectedCourtSlots = [];
+            renderVisualCourts();
+            calculateTotal();
         }
 
         function onDayChange() {
-            const selectedDayName = document.getElementById('bookingDay').value;
-            const targetDayIndex = DAYS_MY.indexOf(selectedDayName);
-            
-            if (targetDayIndex !== -1) {
-                let currentDate = new Date();
-                currentDate.setHours(0, 0, 0, 0);
-                
-                let currentDayIndex = currentDate.getDay();
-                let diff = targetDayIndex - currentDayIndex;
-                if (diff < 0) diff += 7;
-                
-                currentDate.setDate(currentDate.getDate() + diff);
-                
-                const yyyy = currentDate.getFullYear();
-                const mm = String(currentDate.getMonth() + 1).padStart(2, '0');
-                const dd = String(currentDate.getDate()).padStart(2, '0');
-                document.getElementById('bookingDate').value = `${yyyy}-${mm}-${dd}`;
-                document.getElementById('selectedDateDisplay').innerText = `Paparan untuk: ${yyyy}-${mm}-${dd} (${selectedDayName})`;
-            }
-            resetSelection();
-            updateUI();
-        }
-
-        function resetSelection() {
-            selectedCourtSlots = [];
-            calculatePrice();
-        }
-
-        function adjustQty(id, delta) {
-            const input = document.getElementById(id);
-            let val = parseInt(input.value) || 0;
-            val += delta;
-            if (val < 0) val = 0;
-            input.value = val;
-            calculatePrice();
-        }
-
-        // Semak jika slot diambil oleh mana-mana tempahan aktif
-        function getSlotStatus(courtId, startHour) {
+            const dayName = document.getElementById('bookingDay').value;
             const dateVal = document.getElementById('bookingDate').value;
-            const found = settings.bookings.find(b => 
-                b.date === dateVal && 
-                b.status !== "Ditolak" &&
-                b.selectedSlots && b.selectedSlots.some(s => s.courtId === courtId && s.startHour === startHour)
-            );
-
-            if (!found) return null; // Kosong
-            return found.status; // 'Menunggu Kelulusan' atau 'Diluluskan'
+            document.getElementById('selectedDateDisplay').innerText = `Paparan untuk: ${dateVal} (${dayName})`;
         }
 
-        function toggleSlot(courtId, startHour) {
-            if (!settings.courts[courtId]) {
-                alert("Gelanggang ini sedang ditutup.");
-                return;
-            }
+        function togglePaymentQR() {
+            const method = document.getElementById('paymentMethod').value;
+            const img = document.getElementById('merchantQrImg');
+            const bankName = document.getElementById('displayBankName');
+            const accName = document.getElementById('displayAccName');
+            const accNo = document.getElementById('displayAccNo');
+            const qrTitle = document.getElementById('qrTitle');
 
-            const status = getSlotStatus(courtId, startHour);
-            if (status) {
-                alert(`Slot ini tidak boleh dipilih (Status: ${status}).`);
-                return;
-            }
-
-            const existingIdx = selectedCourtSlots.findIndex(s => s.courtId === courtId && s.startHour === startHour);
-            if (existingIdx > -1) {
-                selectedCourtSlots.splice(existingIdx, 1);
+            if(method === 'duitnow') {
+                qrTitle.innerText = "Imbas Kod DuitNow QR / Bank Transfer";
+                img.src = settings.qr.duitnowImg;
+                bankName.innerText = settings.qr.bankName;
+                accName.innerText = settings.qr.accName;
+                accNo.innerText = settings.qr.accNo;
             } else {
-                selectedCourtSlots.push({ courtId, startHour });
+                qrTitle.innerText = "Imbas Kod QR Touch 'n Go eWallet";
+                img.src = settings.qr.tngImg;
+                bankName.innerText = "Touch 'n Go eWallet";
+                accName.innerText = settings.qr.tngName;
+                accNo.innerText = settings.qr.tngNo;
             }
-
-            updateUI();
         }
 
-        function renderVisualGrid() {
-            const grid = document.getElementById('visualCourtGrid');
-            grid.innerHTML = '';
+        function renderVisualCourts() {
+            const container = document.getElementById('visualCourtGrid');
+            container.innerHTML = '';
+            const currentDate = document.getElementById('bookingDate').value;
 
             COURTS_DATA.forEach(court => {
-                const isActive = settings.courts[court.id];
-                const courtCard = document.createElement('div');
-                courtCard.className = `p-3 rounded-xl border ${isActive ? 'bg-slate-800/90 border-slate-700' : 'bg-slate-800/40 border-slate-800 opacity-60'}`;
-
-                let slotsHtml = '';
-                ALL_SLOTS.forEach(slot => {
-                    const bookedStatus = getSlotStatus(court.id, slot.startHour);
-                    const isSelected = selectedCourtSlots.some(s => s.courtId === court.id && s.startHour === slot.startHour);
-
-                    let btnClass = "";
-                    let isBtnDisabled = false;
-
-                    if (!isActive) {
-                        btnClass = "bg-slate-800 text-slate-600 cursor-not-allowed";
-                        isBtnDisabled = true;
-                    } else if (bookedStatus === "Diluluskan") {
-                        btnClass = "bg-rose-500/20 text-rose-400 border border-rose-500/30 cursor-not-allowed";
-                        isBtnDisabled = true;
-                    } else if (bookedStatus === "Menunggu Kelulusan") {
-                        btnClass = "bg-amber-500/20 text-amber-300 border border-amber-500/30 cursor-not-allowed";
-                        isBtnDisabled = true;
-                    } else if (isSelected) {
-                        btnClass = "bg-blue-600 text-white font-bold ring-2 ring-blue-400 shadow-lg";
-                    } else {
-                        btnClass = "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30";
-                    }
-
-                    slotsHtml += `
-                        <button type="button" 
-                            onclick="toggleSlot('${court.id}', ${slot.startHour})"
-                            ${isBtnDisabled ? 'disabled' : ''}
-                            class="p-2 rounded-lg text-xs font-semibold text-center transition flex justify-between items-center ${btnClass}">
-                            <span>${slot.displayTime}</span>
-                            <span class="text-[10px] opacity-75">${slot.type === 'peak' ? '🔥 Peak' : 'Off-peak'}</span>
-                        </button>
-                    `;
-                });
-
-                courtCard.innerHTML = `
-                    <div class="flex items-center justify-between mb-3 border-b border-slate-700 pb-2">
-                        <h3 class="font-bold text-sm text-slate-100">${court.name}</h3>
-                        <span class="text-[10px] px-2 py-0.5 rounded-full font-bold ${isActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}">
+                const isActive = settings.activeCourts[court.id];
+                const card = document.createElement('div');
+                card.className = `p-3.5 rounded-xl border transition-all ${isActive ? 'bg-slate-800 border-slate-700' : 'bg-slate-800/40 border-slate-800 opacity-50'}`;
+                
+                let courtHtml = `
+                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-700/80">
+                        <span class="font-bold text-sm text-white flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full ${isActive ? 'bg-emerald-400' : 'bg-rose-500'}"></span>
+                            ${court.name}
+                        </span>
+                        <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded ${isActive ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-rose-950 text-rose-300 border border-rose-800'}">
                             ${isActive ? 'Aktif' : 'Tutup'}
                         </span>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                        ${slotsHtml}
-                    </div>
                 `;
 
-                grid.appendChild(courtCard);
+                if(!isActive) {
+                    courtHtml += `<p class="text-xs text-slate-400 italic py-4 text-center">Gelanggang tidak beroperasi.</p>`;
+                } else {
+                    courtHtml += `<div class="grid grid-cols-2 gap-1.5 text-xs">`;
+                    
+                    ALL_SLOTS.forEach(slot => {
+                        const existing = bookings.find(b => 
+                            b.date === currentDate && 
+                            b.status !== 'Ditolak' &&
+                            b.slots && b.slots.some(s => s.courtId === court.id && s.startHour === slot.startHour)
+                        );
+
+                        const isSelected = selectedCourtSlots.some(s => s.courtId === court.id && s.startHour === slot.startHour);
+
+                        let btnClass = "";
+                        let statusAttr = "";
+                        let statusText = slot.displayTime;
+
+                        if(existing) {
+                            if(existing.status === 'Diluluskan') {
+                                btnClass = "bg-rose-900/60 border-rose-700 text-rose-200 cursor-not-allowed line-through";
+                                statusAttr = "disabled";
+                            } else {
+                                btnClass = "bg-amber-900/60 border-amber-700 text-amber-200 cursor-not-allowed";
+                                statusAttr = "disabled";
+                            }
+                        } else if(isSelected) {
+                            btnClass = "bg-blue-600 border-blue-400 text-white font-bold shadow-sm ring-1 ring-blue-300";
+                        } else {
+                            btnClass = slot.type === 'peak' 
+                                ? "bg-slate-700/80 border-slate-600 hover:bg-emerald-600 hover:border-emerald-500 text-slate-100" 
+                                : "bg-slate-700/50 border-slate-600/70 hover:bg-emerald-600 hover:border-emerald-500 text-slate-200";
+                        }
+
+                        courtHtml += `
+                            <button ${statusAttr} onclick="toggleSlotSelect('${court.id}', ${slot.startHour})" 
+                                class="p-2 rounded-lg border text-center text-xs font-medium transition duration-150 flex flex-col items-center justify-center gap-0.5 ${btnClass}">
+                                <span>${statusText}</span>
+                                <span class="text-[9px] opacity-75">${slot.type === 'peak' ? 'Peak' : 'Off-Peak'}</span>
+                            </button>
+                        `;
+                    });
+
+                    courtHtml += `</div>`;
+                }
+
+                card.innerHTML = courtHtml;
+                container.appendChild(card);
             });
+
+            updateSelectedSlotsText();
         }
 
-        function calculatePrice() {
+        function toggleSlotSelect(courtId, startHour) {
+            const index = selectedCourtSlots.findIndex(s => s.courtId === courtId && s.startHour === startHour);
+            if(index > -1) {
+                selectedCourtSlots.splice(index, 1);
+            } else {
+                selectedCourtSlots.push({ courtId, startHour });
+            }
+            renderVisualCourts();
+            calculateTotal();
+        }
+
+        function updateSelectedSlotsText() {
+            const container = document.getElementById('selectedCourtTimeText');
+            const durationBadge = document.getElementById('durationBadge');
+            
+            durationBadge.innerText = `${selectedCourtSlots.length} Slot Jam`;
+
+            if(selectedCourtSlots.length === 0) {
+                container.innerHTML = `Sila klik mana-mana slot di atas untuk memilih gelanggang & masa.`;
+                return;
+            }
+
+            const grouped = {};
+            selectedCourtSlots.forEach(s => {
+                if(!grouped[s.courtId]) grouped[s.courtId] = [];
+                grouped[s.courtId].push(s.startHour);
+            });
+
+            let html = '<ul class="space-y-1">';
+            for(let courtId in grouped) {
+                const courtName = COURTS_DATA.find(c => c.id === courtId).name;
+                const hours = grouped[courtId].sort((a,b) => a - b);
+                const formattedTimes = hours.map(h => `${TIME_LABEL_MAP[h]} - ${TIME_LABEL_MAP[h+1]}`).join(', ');
+                html += `<li><strong class="text-blue-900">${courtName}:</strong> ${formattedTimes}</li>`;
+            }
+            html += '</ul>';
+            container.innerHTML = html;
+        }
+
+        function adjustQty(id, change) {
+            const input = document.getElementById(id);
+            let val = parseInt(input.value) || 0;
+            val += change;
+            if(val < 0) val = 0;
+            input.value = val;
+            calculateTotal();
+        }
+
+        function calculateTotal() {
+            let courtTotal = 0;
             let offPeakCount = 0;
             let peakCount = 0;
 
             selectedCourtSlots.forEach(s => {
-                const slotInfo = ALL_SLOTS.find(item => item.startHour === s.startHour);
-                if (slotInfo && slotInfo.type === 'peak') {
-                    peakCount++;
-                } else {
-                    offPeakCount++;
+                const slotObj = ALL_SLOTS.find(item => item.startHour === s.startHour);
+                if(slotObj) {
+                    if(slotObj.type === 'peak') {
+                        courtTotal += parseFloat(settings.peakPrice);
+                        peakCount++;
+                    } else {
+                        courtTotal += parseFloat(settings.offPeakPrice);
+                        offPeakCount++;
+                    }
                 }
             });
 
-            const courtTotal = (offPeakCount * settings.offpeakPrice) + (peakCount * settings.peakPrice);
-            
             const paddleQty = parseInt(document.getElementById('paddleQty').value) || 0;
             const ballStdQty = parseInt(document.getElementById('ballStdQty').value) || 0;
             const ballPremQty = parseInt(document.getElementById('ballPremQty').value) || 0;
 
-            const paddleTotal = paddleQty * settings.paddlePrice;
-            const ballStdTotal = ballStdQty * settings.ballStdPrice;
-            const ballPremTotal = ballPremQty * settings.ballPremPrice;
+            const paddleTotal = paddleQty * parseFloat(settings.paddlePrice);
+            const ballStdTotal = ballStdQty * parseFloat(settings.ballStdPrice);
+            const ballPremTotal = ballPremQty * parseFloat(settings.ballPremPrice);
 
             const grandTotal = courtTotal + paddleTotal + ballStdTotal + ballPremTotal;
 
-            // Kemaskini Paparan UI Ringkasan
             document.getElementById('courtPriceDisplay').innerText = `RM ${courtTotal.toFixed(2)}`;
-            document.getElementById('hoursBreakdownDisplay').innerText = `(${offPeakCount} Slot Off-Peak, ${peakCount} Slot Peak)`;
+            document.getElementById('hoursBreakdownDisplay').innerText = `${offPeakCount}h Off-Peak (RM${settings.offPeakPrice}), ${peakCount}h Peak (RM${settings.peakPrice})`;
             document.getElementById('paddlePriceDisplay').innerText = `RM ${paddleTotal.toFixed(2)}`;
             document.getElementById('ballStdPriceDisplay').innerText = `RM ${ballStdTotal.toFixed(2)}`;
             document.getElementById('ballPremPriceDisplay').innerText = `RM ${ballPremTotal.toFixed(2)}`;
             document.getElementById('totalPriceDisplay').innerText = `RM ${grandTotal.toFixed(2)}`;
             document.getElementById('qrAmountDisplay').innerText = `RM ${grandTotal.toFixed(2)}`;
 
-            document.getElementById('durationBadge').innerText = `${selectedCourtSlots.length} Slot Jam`;
-
-            const courtSummaryDiv = document.getElementById('selectedCourtTimeText');
-            if (selectedCourtSlots.length > 0) {
-                // Kumpulkan mengikut court
-                const grouped = {};
-                selectedCourtSlots.forEach(s => {
-                    if (!grouped[s.courtId]) grouped[s.courtId] = [];
-                    grouped[s.courtId].push(s.startHour);
-                });
-
-                let summaryHtml = "";
-                for (const cid in grouped) {
-                    const courtObj = COURTS_DATA.find(c => c.id === cid);
-                    const hoursSorted = grouped[cid].sort((a,b) => a - b);
-                    const timeLabels = hoursSorted.map(h => `${TIME_LABEL_MAP[h]}-${TIME_LABEL_MAP[h+1]}`).join(', ');
-                    summaryHtml += `<div><b>${courtObj ? courtObj.name : cid}:</b> ${timeLabels}</div>`;
-                }
-                courtSummaryDiv.innerHTML = summaryHtml;
-            } else {
-                courtSummaryDiv.innerHTML = "Sila klik mana-mana slot di atas untuk memilih gelanggang & masa.";
-            }
-
             return grandTotal;
         }
 
-        function togglePaymentQR() {
-            const method = document.getElementById('paymentMethod').value;
-            const img = document.getElementById('merchantQrImg');
-            
-            if (method === 'tng') {
-                img.src = settings.tngQrImg;
-                document.getElementById('displayBankName').innerText = "Touch 'n Go eWallet";
-                document.getElementById('displayAccName').innerText = settings.tngAccName;
-                document.getElementById('displayAccNo').innerText = settings.tngAccNo;
-            } else {
-                img.src = settings.duitnowQrImg;
-                document.getElementById('displayBankName').innerText = settings.bankName;
-                document.getElementById('displayAccName').innerText = settings.bankAccName;
-                document.getElementById('displayAccNo').innerText = settings.bankAccNo;
-            }
-        }
-
         function generateReceipt() {
-            const name = document.getElementById('custName').value.trim();
-            const phone = document.getElementById('custPhone').value.trim();
-            const proof = document.getElementById('paymentProof').files[0];
+            const custName = document.getElementById('custName').value.trim();
+            const custPhone = document.getElementById('custPhone').value.trim();
+            const bookingDate = document.getElementById('bookingDate').value;
+            const bookingDay = document.getElementById('bookingDay').value;
+            const proofInput = document.getElementById('paymentProof');
 
-            if (!name || !phone) {
-                alert("Sila isi Nama dan Nombor WhatsApp anda.");
+            if(!custName || !custPhone) {
+                alert("Sila isi Nama Pelanggan dan Nombor WhatsApp.");
                 return;
             }
 
-            if (selectedCourtSlots.length === 0) {
-                alert("Sila pilih sekurang-kurangnya 1 slot gelanggang.");
+            if(selectedCourtSlots.length === 0) {
+                alert("Sila pilih sekurang-kurangnya satu slot gelanggang dan masa.");
                 return;
             }
 
-            if (!proof) {
-                alert("Sila muat naik resit bayaran anda.");
+            if(proofInput.files.length === 0) {
+                alert("Sila muat naik bukti resit pembayaran terlebih dahulu.");
                 return;
             }
 
-            const totalAmount = calculatePrice();
+            const grandTotal = calculateTotal();
             const refNo = "EM6-" + Math.floor(100000 + Math.random() * 900000);
-            const method = document.getElementById('paymentMethod').value === 'tng' ? "Touch 'n Go eWallet" : "DuitNow QR / Bank";
+            currentBookingRef = refNo;
+
+            const method = document.getElementById('paymentMethod').value;
+            const methodLabel = method === 'duitnow' ? "DuitNow QR / Bank Transfer" : "Touch 'n Go eWallet";
 
             const newBooking = {
                 refId: refNo,
-                date: document.getElementById('bookingDate').value,
-                day: document.getElementById('bookingDay').value,
-                custName: name,
-                custPhone: phone,
-                selectedSlots: [...selectedCourtSlots],
-                paymentMethod: method,
-                amount: totalAmount,
-                status: "Menunggu Kelulusan"
+                custName: custName,
+                custPhone: custPhone,
+                date: bookingDate,
+                day: bookingDay,
+                slots: [...selectedCourtSlots],
+                paddleQty: parseInt(document.getElementById('paddleQty').value) || 0,
+                ballStdQty: parseInt(document.getElementById('ballStdQty').value) || 0,
+                ballPremQty: parseInt(document.getElementById('ballPremQty').value) || 0,
+                totalAmount: grandTotal,
+                paymentMethod: methodLabel,
+                status: "Menunggu Kelulusan",
+                timestamp: new Date().toISOString()
             };
 
-            settings.bookings.push(newBooking);
-            saveMasterSettings();
+            // SIMPAN HANTAR TRUS KE CLOUD DATABASE
+            db.ref('em6_bookings/' + refNo).set(newBooking);
 
-            lastBookingData = newBooking;
+            document.getElementById('refNo').innerText = `Ref No: ${refNo}`;
+            document.getElementById('payMethodDisplay').innerText = `Kaedah: ${methodLabel}`;
 
-            // Papar Resit
-            document.getElementById('refNo').innerText = `No. Rujukan: ${refNo}`;
-            document.getElementById('payMethodDisplay').innerText = `Kaedah: ${method} (RM ${totalAmount.toFixed(2)})`;
-            
-            const qrContainer = document.getElementById('qrcode');
-            qrContainer.innerHTML = '';
-            new QRCode(qrContainer, {
-                text: refNo,
-                width: 120,
-                height: 120
+            const qrcodeDiv = document.getElementById('qrcode');
+            qrcodeDiv.innerHTML = "";
+            qrCodeInstance = new QRCode(qrcodeDiv, {
+                text: `REF:${refNo}|NAME:${custName}|TOTAL:${grandTotal.toFixed(2)}`,
+                width: 128,
+                height: 128
             });
 
             document.getElementById('receiptSection').classList.remove('hidden');
             document.getElementById('receiptSection').scrollIntoView({ behavior: 'smooth' });
             
-            updateUI();
+            alert("Tempahan berjaya dihantar ke Cloud Database! Sila tekan butang WhatsApp untuk menghantar resit kepada Owner.");
         }
 
         function sendToWhatsappOwner() {
-            if (!lastBookingData) return;
+            if(!currentBookingRef) return;
+            const b = bookings.find(item => item.refId === currentBookingRef);
+            if(!b) return;
 
-            // Format pesanan slots
+            let slotText = "";
             const grouped = {};
-            lastBookingData.selectedSlots.forEach(s => {
-                if (!grouped[s.courtId]) grouped[s.courtId] = [];
+            b.slots.forEach(s => {
+                if(!grouped[s.courtId]) grouped[s.courtId] = [];
                 grouped[s.courtId].push(s.startHour);
             });
 
-            let slotsMsg = "";
-            for (const cid in grouped) {
-                const courtObj = COURTS_DATA.find(c => c.id === cid);
-                const timeLabels = grouped[cid].sort((a,b)=>a-b).map(h => `${TIME_LABEL_MAP[h]}-${TIME_LABEL_MAP[h+1]}`).join(', ');
-                slotsMsg += `• ${courtObj ? courtObj.name : cid}: ${timeLabels}\n`;
+            for(let courtId in grouped) {
+                const courtName = COURTS_DATA.find(c => c.id === courtId).name;
+                const hours = grouped[courtId].sort((a,b) => a - b);
+                const formattedTimes = hours.map(h => `${TIME_LABEL_MAP[h]}-${TIME_LABEL_MAP[h+1]}`).join(', ');
+                slotText += `\n  - ${courtName}: ${formattedTimes}`;
             }
 
-            const msg = `*RESIT TEMPAHAN BARU - EM6 PICKLEBALL ARENA*\n` +
-                `------------------------------------\n` +
-                `*No. Rujukan:* ${lastBookingData.refId}\n` +
-                `*Nama:* ${lastBookingData.custName}\n` +
-                `*WhatsApp:* ${lastBookingData.custPhone}\n` +
-                `*Tarikh:* ${lastBookingData.date} (${lastBookingData.day})\n` +
-                `*Tempahan Slot:*\n${slotsMsg}` +
-                `*Jumlah Bayaran:* RM ${lastBookingData.amount.toFixed(2)}\n` +
-                `*Kaedah Bayaran:* ${lastBookingData.paymentMethod}\n` +
-                `------------------------------------\n` +
-                `*Status:* Menunggu Pengesahan Owner. Resit bayaran disertakan bersama mesej ini. Terima kasih!`;
+            let msg = `*PENGESAHAN RESIT TEMPAHAN - EM6 ARENA*\n\n`;
+            msg += `*Ref ID:* ${b.refId}\n`;
+            msg += `*Nama:* ${b.custName}\n`;
+            msg += `*No. Tel:* ${b.custPhone}\n`;
+            msg += `*Tarikh:* ${b.date} (${b.day})\n`;
+            msg += `*Gelanggang & Slot:*${slotText}\n\n`;
+            msg += `*Add-ons:*\n`;
+            msg += `  - Paddle: ${b.paddleQty} set\n`;
+            msg += `  - Bola Standard: ${b.ballStdQty} pc\n`;
+            msg += `  - Bola Premium: ${b.ballPremQty} pc\n\n`;
+            msg += `*Jumlah Bayaran:* RM ${b.totalAmount.toFixed(2)}\n`;
+            msg += `*Kaedah Bayaran:* ${b.paymentMethod}\n`;
+            msg += `*Status:* Menunggu Kelulusan Owner\n\n`;
+            msg += `_Saya telah muat naik resit pembayaran. Mohon sahkan tempahan saya. Terima kasih!_`;
 
-            const url = `https://wa.me/${OWNER_WHATSAPP}?text=${encodeURIComponent(msg)}`;
-            window.open(url, '_blank');
+            const encodedMsg = encodeURIComponent(msg);
+            window.open(`https://wa.me/${OWNER_WHATSAPP}?text=${encodedMsg}`, '_blank');
         }
 
-        function updateUI() {
-            document.getElementById('labelPaddle').innerText = settings.paddlePrice.toFixed(2);
-            document.getElementById('labelBallStd').innerText = settings.ballStdPrice.toFixed(2);
-            document.getElementById('labelBallPrem').innerText = settings.ballPremPrice.toFixed(2);
-
-            renderVisualGrid();
-            calculatePrice();
-            togglePaymentQR();
-        }
-
-        /* --- LOGIK PANEL OWNER (ADMIN) --- */
+        // FUNGSI PANEL OWNER / ADMIN
         function openAdminModal() {
-            const inputPin = prompt("Masukkan PIN Owner:");
-            if (inputPin === settings.ownerPin) {
-                document.getElementById('settingOffPeak').value = settings.offpeakPrice;
-                document.getElementById('settingPeak').value = settings.peakPrice;
-                document.getElementById('settingPaddle').value = settings.paddlePrice;
-                document.getElementById('settingBallStd').value = settings.ballStdPrice;
-                document.getElementById('settingBallPrem').value = settings.ballPremPrice;
-
-                document.getElementById('settingBankName').value = settings.bankName;
-                document.getElementById('settingBankAccNo').value = settings.bankAccNo;
-                document.getElementById('settingBankAccName').value = settings.bankAccName;
-                document.getElementById('settingDuitNowQr').value = settings.duitnowQrImg;
-
-                document.getElementById('settingTngAccNo').value = settings.tngAccNo;
-                document.getElementById('settingTngAccName').value = settings.tngAccName;
-                document.getElementById('settingTngQr').value = settings.tngQrImg;
-
-                document.getElementById('court1Active').checked = settings.courts.court1;
-                document.getElementById('court2Active').checked = settings.courts.court2;
-                document.getElementById('court3Active').checked = settings.courts.court3;
-
-                renderAdminReport();
+            const pin = prompt("Masukkan PIN Owner (Default: 1234):");
+            if(pin === settings.pin) {
                 document.getElementById('adminModal').classList.remove('hidden');
-            } else if (inputPin !== null) {
+                renderAdminBookings();
+            } else if(pin !== null) {
                 alert("PIN Salah!");
             }
         }
@@ -878,91 +921,151 @@
         }
 
         function switchTab(tabName) {
-            const tabs = ['laporan', 'harga', 'qr', 'court', 'security'];
-            tabs.forEach(t => {
-                const el = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
-                const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}Btn`);
-                if (t === tabName) {
-                    el.classList.remove('hidden');
-                    btn.className = "py-2 px-3 font-semibold border-b-2 border-blue-600 text-blue-600";
+            ['laporan', 'harga', 'qr', 'court', 'security'].forEach(t => {
+                const tabEl = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+                const btnEl = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn');
+                if(t === tabName) {
+                    tabEl.classList.remove('hidden');
+                    btnEl.className = "py-2 px-3 font-semibold border-b-2 border-blue-600 text-blue-600";
                 } else {
-                    el.classList.add('hidden');
-                    btn.className = "py-2 px-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-blue-600";
+                    tabEl.classList.add('hidden');
+                    btnEl.className = "py-2 px-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-blue-600";
                 }
             });
         }
 
-        function saveAdminSettings() {
-            settings.offpeakPrice = parseFloat(document.getElementById('settingOffPeak').value) || 0;
-            settings.peakPrice = parseFloat(document.getElementById('settingPeak').value) || 0;
-            settings.paddlePrice = parseFloat(document.getElementById('settingPaddle').value) || 0;
-            settings.ballStdPrice = parseFloat(document.getElementById('settingBallStd').value) || 0;
-            settings.ballPremPrice = parseFloat(document.getElementById('settingBallPrem').value) || 0;
+        function renderAdminBookings(filterText = "") {
+            const tableBody = document.getElementById('bookingHistoryTable');
+            tableBody.innerHTML = "";
+            
+            let totalRev = 0;
+            let count = 0;
 
-            saveMasterSettings();
-            updateUI();
-            alert("Tetapan harga berjaya dikemaskini.");
+            const filtered = bookings.filter(b => {
+                const search = filterText.toLowerCase();
+                return b.custName.toLowerCase().includes(search) || 
+                       b.refId.toLowerCase().includes(search) || 
+                       b.date.toLowerCase().includes(search);
+            });
+
+            filtered.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            filtered.forEach(b => {
+                if(b.status === 'Diluluskan') {
+                    totalRev += b.totalAmount;
+                }
+                count++;
+
+                let slotDetails = b.slots ? b.slots.map(s => {
+                    const cName = COURTS_DATA.find(c => c.id === s.courtId).name.split(' ')[0];
+                    return `${cName} (${TIME_LABEL_MAP[s.startHour]})`;
+                }).join(', ') : '-';
+
+                let statusBadge = "";
+                if(b.status === 'Diluluskan') statusBadge = `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">Diluluskan</span>`;
+                else if(b.status === 'Ditolak') statusBadge = `<span class="bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-bold">Ditolak</span>`;
+                else statusBadge = `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Menunggu</span>`;
+
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-gray-100";
+                tr.innerHTML = `
+                    <td class="p-2 font-mono font-bold">${b.refId}</td>
+                    <td class="p-2">${b.date}<br><span class="text-gray-400">${b.day}</span></td>
+                    <td class="p-2 font-medium">${b.custName}<br><span class="text-blue-600">${b.custPhone}</span></td>
+                    <td class="p-2 text-[11px]">${slotDetails}</td>
+                    <td class="p-2 font-bold text-blue-900">RM ${b.totalAmount.toFixed(2)}</td>
+                    <td class="p-2 text-center">${statusBadge}</td>
+                    <td class="p-2 text-center space-x-1 whitespace-nowrap">
+                        <button onclick="approveBooking('${b.refId}')" class="bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-700">Approve</button>
+                        <button onclick="rejectBooking('${b.refId}')" class="bg-rose-600 text-white px-2 py-1 rounded hover:bg-rose-700">Reject</button>
+                        <button onclick="openEditModal('${b.refId}')" class="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">Edit</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            document.getElementById('totalRevenue').innerText = `RM ${totalRev.toFixed(2)}`;
+            document.getElementById('bookingCount').innerText = count;
+        }
+
+        function filterBookings() {
+            const query = document.getElementById('searchBookingInput').value;
+            renderAdminBookings(query);
+        }
+
+        function approveBooking(refId) {
+            db.ref('em6_bookings/' + refId + '/status').set('Diluluskan');
+            alert(`Tempahan ${refId} telah DILULUSKAN.`);
+        }
+
+        function rejectBooking(refId) {
+            db.ref('em6_bookings/' + refId + '/status').set('Ditolak');
+            alert(`Tempahan ${refId} telah DITOLAK.`);
+        }
+
+        function clearHistory() {
+            if(confirm("Adakah anda pasti mahu memadam semua sejarah tempahan dari Cloud Database?")) {
+                db.ref('em6_bookings').remove();
+            }
+        }
+
+        function saveAdminSettings() {
+            settings.offPeakPrice = parseFloat(document.getElementById('settingOffPeak').value) || 20;
+            settings.peakPrice = parseFloat(document.getElementById('settingPeak').value) || 35;
+            settings.paddlePrice = parseFloat(document.getElementById('settingPaddle').value) || 5;
+            settings.ballStdPrice = parseFloat(document.getElementById('settingBallStd').value) || 5;
+            settings.ballPremPrice = parseFloat(document.getElementById('settingBallPrem').value) || 19;
+            
+            saveSettingsToCloud();
+            alert("Tetapan harga telah dikemaskini ke Cloud Database.");
         }
 
         function saveQrSettings() {
-            settings.bankName = document.getElementById('settingBankName').value;
-            settings.bankAccNo = document.getElementById('settingBankAccNo').value;
-            settings.bankAccName = document.getElementById('settingBankAccName').value;
-            settings.duitnowQrImg = document.getElementById('settingDuitNowQr').value;
+            settings.qr.bankName = document.getElementById('settingBankName').value;
+            settings.qr.accNo = document.getElementById('settingBankAccNo').value;
+            settings.qr.accName = document.getElementById('settingBankAccName').value;
+            settings.qr.duitnowImg = document.getElementById('settingDuitNowQr').value;
 
-            settings.tngAccNo = document.getElementById('settingTngAccNo').value;
-            settings.tngAccName = document.getElementById('settingTngAccName').value;
-            settings.tngQrImg = document.getElementById('settingTngQr').value;
+            settings.qr.tngNo = document.getElementById('settingTngAccNo').value;
+            settings.qr.tngName = document.getElementById('settingTngAccName').value;
+            settings.qr.tngImg = document.getElementById('settingTngQr').value;
 
-            saveMasterSettings();
-            updateUI();
-            alert("Tetapan Bank & QR berjaya dikemaskini.");
+            saveSettingsToCloud();
+            alert("Maklumat akaun & QR telah dikemaskini ke Cloud Database.");
         }
 
         function saveCourtSettings() {
-            settings.courts.court1 = document.getElementById('court1Active').checked;
-            settings.courts.court2 = document.getElementById('court2Active').checked;
-            settings.courts.court3 = document.getElementById('court3Active').checked;
+            settings.activeCourts.court1 = document.getElementById('court1Active').checked;
+            settings.activeCourts.court2 = document.getElementById('court2Active').checked;
+            settings.activeCourts.court3 = document.getElementById('court3Active').checked;
 
-            saveMasterSettings();
-            updateUI();
-            alert("Status gelanggang berjaya dikemaskini.");
+            saveSettingsToCloud();
+            alert("Status gelanggang telah dikemaskini ke Cloud Database.");
         }
 
         function updatePin() {
-            const pin = document.getElementById('newPinInput').value.trim();
-            if (pin.length >= 4) {
-                settings.ownerPin = pin;
-                saveMasterSettings();
-                alert("PIN Owner berjaya ditukar.");
-                document.getElementById('newPinInput').value = '';
+            const newPin = document.getElementById('newPinInput').value.trim();
+            if(newPin.length >= 4) {
+                settings.pin = newPin;
+                saveSettingsToCloud();
+                document.getElementById('newPinInput').value = "";
+                alert("PIN Owner baru telah disimpan ke Cloud Database.");
             } else {
                 alert("Sila masukkan sekurang-kurangnya 4 digit PIN.");
             }
         }
 
-        /* --- KELULUSAN & EDIT REKOD OLEH OWNER --- */
-        function changeBookingStatus(refId, newStatus) {
-            const booking = settings.bookings.find(b => b.refId === refId);
-            if (booking) {
-                booking.status = newStatus;
-                saveMasterSettings();
-                renderAdminReport();
-                updateUI();
-                alert(`Status Tempahan ${refId} telah ditukar kepada "${newStatus}".`);
-            }
-        }
-
+        // FUNGSI EDIT MODAL
         function openEditModal(refId) {
-            const booking = settings.bookings.find(b => b.refId === refId);
-            if (!booking) return;
+            const b = bookings.find(item => item.refId === refId);
+            if(!b) return;
 
-            document.getElementById('editRefId').value = booking.refId;
-            document.getElementById('editCustName').value = booking.custName;
-            document.getElementById('editCustPhone').value = booking.custPhone;
-            document.getElementById('editDate').value = booking.date;
-            document.getElementById('editAmount').value = booking.amount;
-            document.getElementById('editStatus').value = booking.status;
+            document.getElementById('editRefId').value = b.refId;
+            document.getElementById('editCustName').value = b.custName;
+            document.getElementById('editCustPhone').value = b.custPhone;
+            document.getElementById('editDate').value = b.date;
+            document.getElementById('editAmount').value = b.totalAmount;
+            document.getElementById('editStatus').value = b.status;
 
             document.getElementById('editBookingModal').classList.remove('hidden');
         }
@@ -973,132 +1076,56 @@
 
         function saveEditBooking() {
             const refId = document.getElementById('editRefId').value;
-            const booking = settings.bookings.find(b => b.refId === refId);
+            const b = bookings.find(item => item.refId === refId);
+            if(b) {
+                const updatedData = {
+                    ...b,
+                    custName: document.getElementById('editCustName').value.trim(),
+                    custPhone: document.getElementById('editCustPhone').value.trim(),
+                    date: document.getElementById('editDate').value,
+                    totalAmount: parseFloat(document.getElementById('editAmount').value) || b.totalAmount,
+                    status: document.getElementById('editStatus').value
+                };
 
-            if (booking) {
-                booking.custName = document.getElementById('editCustName').value.trim();
-                booking.custPhone = document.getElementById('editCustPhone').value.trim();
-                booking.date = document.getElementById('editDate').value;
-                booking.amount = parseFloat(document.getElementById('editAmount').value) || 0;
-                booking.status = document.getElementById('editStatus').value;
-
-                // Update Hari dari Tarikh
-                if (booking.date) {
-                    const parts = booking.date.split('-');
-                    const d = new Date(parts[0], parts[1] - 1, parts[2]);
-                    booking.day = DAYS_MY[d.getDay()];
-                }
-
-                saveMasterSettings();
-                renderAdminReport();
-                updateUI();
+                db.ref('em6_bookings/' + refId).set(updatedData);
                 closeEditModal();
-                alert("Maklumat tempahan berjaya dikemaskini.");
+                alert("Maklumat tempahan berjaya dikemaskini di Cloud Database.");
             }
         }
 
-        function renderAdminReport() {
-            const tableBody = document.getElementById('bookingHistoryTable');
-            tableBody.innerHTML = '';
-
-            let totalRev = 0;
-            const list = settings.bookings || [];
-
-            list.forEach(b => {
-                if (b.status === "Diluluskan") {
-                    totalRev += b.amount;
-                }
-
-                // Format slot
-                const grouped = {};
-                (b.selectedSlots || []).forEach(s => {
-                    if (!grouped[s.courtId]) grouped[s.courtId] = [];
-                    grouped[s.courtId].push(s.startHour);
-                });
-
-                let slotsDisplay = "";
-                for (const cid in grouped) {
-                    const courtObj = COURTS_DATA.find(c => c.id === cid);
-                    const times = grouped[cid].sort((a,b)=>a-b).map(h => `${h}:00`).join(', ');
-                    slotsDisplay += `<div class="text-[10px]"><b>${courtObj ? courtObj.name : cid}:</b> ${times}</div>`;
-                }
-
-                let statusBadge = "";
-                if (b.status === "Diluluskan") {
-                    statusBadge = `<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">✅ Diluluskan</span>`;
-                } else if (b.status === "Ditolak") {
-                    statusBadge = `<span class="bg-rose-100 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full">❌ Ditolak</span>`;
-                } else {
-                    statusBadge = `<span class="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">⏳ Menunggu Kelulusan</span>`;
-                }
-
-                const tr = document.createElement('tr');
-                tr.className = "border-b hover:bg-gray-100";
-                tr.innerHTML = `
-                    <td class="p-2 border-r font-mono text-[11px]">${b.refId}</td>
-                    <td class="p-2 border-r">${b.date}<br><span class="text-[10px] text-gray-500">${b.day}</span></td>
-                    <td class="p-2 border-r"><b>${b.custName}</b><br><span class="text-[10px] text-gray-500">${b.custPhone}</span></td>
-                    <td class="p-2 border-r">${slotsDisplay}</td>
-                    <td class="p-2 border-r font-bold">RM ${b.amount.toFixed(2)}</td>
-                    <td class="p-2 border-r text-center">${statusBadge}</td>
-                    <td class="p-2 text-center space-y-1">
-                        <div class="flex justify-center gap-1">
-                            <button onclick="changeBookingStatus('${b.refId}', 'Diluluskan')" title="Luluskan Resit" class="bg-emerald-600 text-white text-[10px] px-2 py-1 rounded font-bold hover:bg-emerald-700">✔️ Lulus</button>
-                            <button onclick="changeBookingStatus('${b.refId}', 'Ditolak')" title="Tolak Resit" class="bg-rose-600 text-white text-[10px] px-2 py-1 rounded font-bold hover:bg-rose-700">✖️ Tolak</button>
-                        </div>
-                        <button onclick="openEditModal('${b.refId}')" class="w-full bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded hover:bg-blue-600 font-semibold">✏️ Edit Data</button>
-                    </td>
-                `;
-                tableBody.appendChild(tr);
-            });
-
-            document.getElementById('totalRevenue').innerText = `RM ${totalRev.toFixed(2)}`;
-            document.getElementById('bookingCount').innerText = list.length;
-        }
-
-        function filterBookings() {
-            const query = document.getElementById('searchBookingInput').value.toLowerCase();
-            const rows = document.querySelectorAll('#bookingHistoryTable tr');
-
-            rows.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                row.style.display = text.includes(query) ? '' : 'none';
-            });
-        }
-
+        // FUNGSI EXPORT DATA (CSV)
         function downloadBookingsCSV() {
-            if (!settings.bookings || settings.bookings.length === 0) {
+            if(bookings.length === 0) {
                 alert("Tiada rekod tempahan untuk dimuat turun.");
                 return;
             }
 
             let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Ref ID,Tarikh,Hari,Pelanggan,WhatsApp,Kaedah,Jumlah (RM),Status\n";
+            csvContent += "Ref ID,Nama,Phone,Tarikh,Hari,Jumlah (RM),Kaedah Bayaran,Status,Masa Tempahan\n";
 
-            settings.bookings.forEach(b => {
-                csvContent += `"${b.refId}","${b.date}","${b.day}","${b.custName}","${b.custPhone}","${b.paymentMethod}","${b.amount.toFixed(2)}","${b.status}"\n`;
+            bookings.forEach(b => {
+                const row = [
+                    `"${b.refId}"`,
+                    `"${b.custName}"`,
+                    `"${b.custPhone}"`,
+                    `"${b.date}"`,
+                    `"${b.day}"`,
+                    `"${b.totalAmount ? b.totalAmount.toFixed(2) : '0.00'}"`,
+                    `"${b.paymentMethod}"`,
+                    `"${b.status}"`,
+                    `"${b.timestamp}"`
+                ].join(",");
+                csvContent += row + "\n";
             });
 
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Rekod_Tempahan_EM6_${new Date().toISOString().slice(0,10)}.csv`);
+            link.setAttribute("download", `EM6_Bookings_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
-
-        function clearHistory() {
-            if (confirm("Adakah anda pasti untuk memadam semua rekod sejarah tempahan? Action ini tidak boleh diundur.")) {
-                settings.bookings = [];
-                saveMasterSettings();
-                renderAdminReport();
-                updateUI();
-            }
-        }
-
-        // Muat Tetapan Awal semasa tetingkap dimuatkan
-        window.onload = loadSettings;
     </script>
 </body>
 </html>
