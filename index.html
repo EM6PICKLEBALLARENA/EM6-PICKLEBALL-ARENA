@@ -2,456 +2,454 @@
 <html lang="ms">
 <head>
     <meta charset="UTF-8">
+    <!-- Mengoptimumkan saiz paparan khas untuk skrin telefon -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistem Tempahan - EM6 Pickleball Arena</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- QR Code Generator Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <title>EM6 Pickleball Arena</title>
 
-    <!-- Firebase SDK (v9 Compatibility Mode) -->
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- PWA & Mobile Web App Meta Tags -->
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EM6 Arena">
+
+    <!-- Web App Manifest Dynamic Data Link -->
+    <link rel="manifest" id="manifestLink">
+
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- QRCode JS Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <!-- Firebase Libraries (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
     <style>
-        body { 
-            background-color: #f3f4f6; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            -webkit-tap-highlight-color: transparent;
-        }
+        /* Menghilangkan scrollbar untuk navigasi mudah alih */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Menghalang sentuhan melampau (touch bounce) pada telefon */
+        body {
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
     </style>
 </head>
-<body class="p-3 sm:p-6 md:p-8">
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen pb-12 select-none">
 
-    <div class="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden p-4 sm:p-6 relative border border-gray-100">
-        
-        <!-- Header & Butang Owner -->
-        <div class="flex flex-col sm:flex-row justify-between items-center border-b pb-4 mb-6 gap-4">
-            <div class="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
-                <img src="logo.png" alt="Logo EM6 Pickleball Arena" class="h-16 w-auto object-contain" onerror="this.style.display='none'">
+    <!-- APP HEADER / NAVBAR -->
+    <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-lg">
+        <div class="max-w-md mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <div class="w-9 h-9 bg-amber-500 rounded-xl flex items-center justify-center text-slate-950 font-black text-xl shadow-md shadow-amber-500/20">
+                    🏓
+                </div>
                 <div>
-                    <h1 class="text-xl sm:text-2xl font-black text-gray-800 tracking-tight"> EM6 PICKLEBALL ARENA</h1>
-                    <p class="text-gray-500 text-xs sm:text-sm flex items-center justify-center sm:justify-start gap-1">
-                        <span id="syncStatus" class="inline-block w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></span>
-                        <span id="syncText">Menyambung ke Pangkalan Data...</span>
-                    </p>
+                    <h1 class="font-black text-base tracking-wide text-white leading-tight">EM6 ARENA</h1>
+                    <div class="flex items-center gap-1.5 text-[10px]">
+                        <span id="syncStatus" class="inline-block w-2 h-2 bg-amber-500 rounded-full"></span>
+                        <span id="syncText" class="text-slate-400 font-medium">Memuatkan...</span>
+                    </div>
                 </div>
             </div>
-            <button onclick="openAdminModal()" class="w-full sm:w-auto bg-gray-900 text-white text-xs px-4 py-2.5 rounded-xl hover:bg-gray-800 transition flex items-center justify-center gap-2 shadow-sm font-semibold active:scale-95">
-                ⚙️ Panel Owner
+            
+            <button onclick="openAdminModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1">
+                ⚙️ <span>Owner</span>
             </button>
         </div>
+    </header>
 
-        <!-- SEKSYEN STATUS JADUAL COURT & PILIHAN MASA VIA KLIK -->
-        <div class="mb-6 p-4 sm:p-5 bg-slate-900 text-white rounded-2xl shadow-md">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 border-b border-slate-800 pb-3">
-                <div>
-                    <h2 class="text-base sm:text-lg font-black tracking-wide text-emerald-400 flex items-center gap-2">
-                        <span>📅</span> Pilih Slot (Boleh Pilih Pelbagai Court & Jam Serentak)
-                    </h2>
-                    <p class="text-xs text-slate-400 mt-0.5" id="selectedDateDisplay">Paparan untuk: -</p>
-                </div>
-                <!-- Petunjuk Status -->
-                <div class="flex flex-wrap items-center gap-2 text-[11px] font-medium bg-slate-800/80 p-2 rounded-lg border border-slate-700">
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-emerald-500 rounded-full"></span> Kosong</span>
-                    <span class="text-slate-600">|</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-blue-500 rounded-full"></span> Dipilih</span>
-                    <span class="text-slate-600">|</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-amber-500 rounded-full"></span> Menunggu Kelulusan</span>
-                    <span class="text-slate-600">|</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 bg-rose-500 rounded-full"></span> Booked</span>
-                </div>
-            </div>
-            
-            <!-- Grid Paparan Kad Gelanggang -->
-            <div id="visualCourtGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <!-- Dijana secara dinamik melalui JavaScript -->
-            </div>
-        </div>
+    <main class="max-w-md mx-auto px-4 pt-4 space-y-5">
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Form Input Tempahan -->
-            <div class="space-y-4">
-                <h2 class="text-lg font-bold text-gray-800 border-b pb-2 flex items-center gap-2">
-                    <span class="bg-blue-600 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">1</span>
-                    Maklumat Tempahan Pelanggan
+        <!-- STEP 1: PILIHAN TARIKH PANTAS -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md space-y-3">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>📅</span> 1. Pilih Tarikh Tempahan
                 </h2>
+            </div>
+
+            <!-- Quick Date Buttons -->
+            <div class="grid grid-cols-3 gap-2">
+                <button type="button" onclick="setQuickDate(0)" class="py-2 px-1 bg-slate-800 border border-slate-700 hover:border-amber-500 rounded-xl text-xs font-bold text-slate-200 active:scale-95 transition text-center">
+                    Hari Ini
+                </button>
+                <button type="button" onclick="setQuickDate(1)" class="py-2 px-1 bg-slate-800 border border-slate-700 hover:border-amber-500 rounded-xl text-xs font-bold text-slate-200 active:scale-95 transition text-center">
+                    Esok
+                </button>
+                <button type="button" onclick="setQuickDate(2)" class="py-2 px-1 bg-slate-800 border border-slate-700 hover:border-amber-500 rounded-xl text-xs font-bold text-slate-200 active:scale-95 transition text-center">
+                    Lusa
+                </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <div>
+                    <label class="text-[10px] text-slate-400 font-semibold block mb-1">Tarikh</label>
+                    <input type="date" id="bookingDate" onchange="onDateChange()" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2 text-xs focus:ring-1 focus:ring-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="text-[10px] text-slate-400 font-semibold block mb-1">Hari</label>
+                    <input type="text" id="bookingDay" readonly class="w-full bg-slate-950/50 border border-slate-800 text-slate-400 rounded-xl p-2 text-xs font-bold" value="-">
+                </div>
+            </div>
+            <p id="selectedDateDisplay" class="text-[11px] text-slate-400 text-center font-medium pt-1"></p>
+        </section>
+
+        <!-- STEP 2: GRID GELANGGANG & SLOT -->
+        <section class="space-y-3">
+            <div class="flex justify-between items-center px-1">
+                <h2 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <span>🎾</span> 2. Pilih Slot Gelanggang
+                </h2>
+                <span id="durationBadge" class="text-[10px] bg-blue-900/60 text-blue-300 font-bold px-2 py-0.5 rounded-full border border-blue-700/50">0 Jam Dipilih</span>
+            </div>
+
+            <!-- Visual Court Grid Container -->
+            <div id="visualCourtGrid" class="space-y-3">
+                <!-- Rendered dynamically by JavaScript -->
+            </div>
+        </section>
+
+        <!-- STEP 3: MAKLUMAT & ADD-ONS -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md space-y-4">
+            <h2 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span>👤</span> 3. Maklumat & Kelengkapan
+            </h2>
+
+            <!-- Saved User Profile Inputs -->
+            <div class="space-y-2">
+                <div>
+                    <label class="text-[11px] text-slate-400 font-medium block mb-1">Nama Penuh</label>
+                    <input type="text" id="custName" placeholder="Masukkan nama anda" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="text-[11px] text-slate-400 font-medium block mb-1">Nombor WhatsApp</label>
+                    <input type="tel" id="custPhone" placeholder="Contoh: 0123456789" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs focus:ring-1 focus:ring-amber-500 outline-none">
+                </div>
+            </div>
+
+            <hr class="border-slate-800">
+
+            <!-- Add-ons Selector -->
+            <div class="space-y-3">
+                <h3 class="text-xs font-bold text-slate-300">Sewa/Beli Peralatan</h3>
+
+                <!-- Paddle Rental -->
+                <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <div>
+                        <div class="text-xs font-bold text-slate-200">Sewa Paddle</div>
+                        <div class="text-[10px] text-slate-400">RM <span id="labelPaddle">5.00</span> / unit</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="adjustQty('paddleQty', -1)" class="w-7 h-7 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 font-bold active:scale-95 text-xs">-</button>
+                        <input type="number" id="paddleQty" value="0" readonly class="w-8 text-center bg-transparent text-xs font-bold text-amber-400">
+                        <button type="button" onclick="adjustQty('paddleQty', 1)" class="w-7 h-7 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 font-bold active:scale-95 text-xs">+</button>
+                    </div>
+                </div>
+
+                <!-- Standard Ball -->
+                <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <div>
+                        <div class="text-xs font-bold text-slate-200">Bola Standard</div>
+                        <div class="text-[10px] text-slate-400">RM <span id="labelBallStd">5.00</span> / sebiji</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="adjustQty('ballStdQty', -1)" class="w-7 h-7 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 font-bold active:scale-95 text-xs">-</button>
+                        <input type="number" id="ballStdQty" value="0" readonly class="w-8 text-center bg-transparent text-xs font-bold text-amber-400">
+                        <button type="button" onclick="adjustQty('ballStdQty', 1)" class="w-7 h-7 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 font-bold active:scale-95 text-xs">+</button>
+                    </div>
+                </div>
+
+                <!-- Premium Ball -->
+                <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                    <div>
+                        <div class="text-xs font-bold text-slate-200">Bola Premium (3-Pack)</div>
+                        <div class="text-[10px] text-slate-400">RM <span id="labelBallPrem">19.00</span> / pek</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="adjustQty('ballPremQty', -1)" class="w-7 h-7 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 font-bold active:scale-95 text-xs">-</button>
+                        <input type="number" id="ballPremQty" value="0" readonly class="w-8 text-center bg-transparent text-xs font-bold text-amber-400">
+                        <button type="button" onclick="adjustQty('ballPremQty', 1)" class="w-7 h-7 bg-slate-800 border border-slate-700 rounded-lg text-slate-200 font-bold active:scale-95 text-xs">+</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 4: RINGKASAN & BAYARAN -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md space-y-4">
+            <h2 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span>💳</span> 4. Ringkasan & Pembayaran
+            </h2>
+
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2 text-xs">
+                <div class="text-slate-400 font-semibold mb-1">Masa & Gelanggang Dipilih:</div>
+                <div id="selectedCourtTimeText" class="text-slate-200 font-medium">
+                    <span class="text-slate-500 italic">Sila pilih slot di atas...</span>
+                </div>
                 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Nama Pelanggan</label>
-                        <input type="text" id="custName" placeholder="Contoh: Ahmad Razak" class="w-full p-3 text-sm border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
-                    </div>
+                <hr class="border-slate-800 my-2">
 
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Nombor WhatsApp</label>
-                        <input type="tel" id="custPhone" placeholder="Contoh: 0123456789" class="w-full p-3 text-sm border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition">
-                    </div>
+                <div class="flex justify-between text-slate-400">
+                    <span>Sewa Gelanggang:</span>
+                    <span id="courtPriceDisplay" class="text-slate-200 font-bold">RM 0.00</span>
+                </div>
+                <div class="text-[10px] text-slate-500" id="hoursBreakdownDisplay">(0j Off-Peak, 0j Peak)</div>
+
+                <div class="flex justify-between text-slate-400">
+                    <span>Sewa Paddle:</span>
+                    <span id="paddlePriceDisplay" class="text-slate-200 font-bold">RM 0.00</span>
+                </div>
+                <div class="flex justify-between text-slate-400">
+                    <span>Bola Standard:</span>
+                    <span id="ballStdPriceDisplay" class="text-slate-200 font-bold">RM 0.00</span>
+                </div>
+                <div class="flex justify-between text-slate-400">
+                    <span>Bola Premium:</span>
+                    <span id="ballPremPriceDisplay" class="text-slate-200 font-bold">RM 0.00</span>
                 </div>
 
-                <!-- Input Tarikh & Hari Sewaan -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Tarikh Sewaan</label>
-                        <input type="date" id="bookingDate" onchange="onDateChange()" class="w-full p-3 text-sm border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white transition cursor-pointer">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Hari Sewaan</label>
-                        <select id="bookingDay" onchange="onDayChange()" class="w-full p-3 text-sm border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-bold text-gray-700 transition cursor-pointer">
-                            <option value="Ahad">Ahad</option>
-                            <option value="Isnin">Isnin</option>
-                            <option value="Selasa">Selasa</option>
-                            <option value="Rabu">Rabu</option>
-                            <option value="Khamis">Khamis</option>
-                            <option value="Jumaat">Jumaat</option>
-                            <option value="Sabtu">Sabtu</option>
-                        </select>
-                    </div>
-                </div>
+                <hr class="border-slate-800 my-2">
 
-                <!-- Ringkasan Masa Yang Dipilih Melalui Klik -->
-                <div class="bg-blue-50/70 p-3.5 rounded-xl border border-blue-200 space-y-2">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-blue-900 flex items-center gap-1.5">
-                            ⏱️ Slot Dipilih:
-                        </span>
-                        <span id="durationBadge" class="bg-blue-600 text-white text-xs px-2.5 py-0.5 rounded-full font-bold shadow-sm">0 Slot Jam</span>
-                    </div>
-                    <div id="selectedCourtTimeText" class="text-xs text-blue-900 font-medium bg-white p-2.5 rounded-lg border border-blue-100 max-h-32 overflow-y-auto space-y-1">
-                        Sila klik mana-mana slot di atas untuk memilih gelanggang & masa.
-                    </div>
-                </div>
-
-                <h2 class="text-lg font-bold text-gray-800 border-b pb-2 pt-2 flex items-center gap-2">
-                    <span class="bg-blue-600 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">2</span>
-                    Peralatan Tambahan (Add-ons)
-                </h2>
-
-                <!-- ADD-ONS -->
-                <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100">
-                    <div>
-                        <p class="font-semibold text-sm text-gray-800">Sewa Paddle (2 Pcs)</p>
-                        <p class="text-xs text-gray-500">RM <span id="labelPaddle">5.00</span> / set</p>
-                    </div>
-                    <div class="flex items-center bg-white border rounded-xl p-1 shadow-sm">
-                        <button type="button" onclick="adjustQty('paddleQty', -1)" class="w-8 h-8 rounded-lg bg-gray-100 text-gray-700 font-bold flex items-center justify-center hover:bg-gray-200 active:scale-90 transition">-</button>
-                        <input type="number" id="paddleQty" value="0" min="0" readonly class="w-10 text-center text-sm font-bold bg-transparent outline-none">
-                        <button type="button" onclick="adjustQty('paddleQty', 1)" class="w-8 h-8 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center hover:bg-blue-700 active:scale-90 transition">+</button>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100">
-                    <div>
-                        <p class="font-semibold text-sm text-gray-800">Bola Standard</p>
-                        <p class="text-xs text-gray-500">RM <span id="labelBallStd">5.00</span> / pc</p>
-                    </div>
-                    <div class="flex items-center bg-white border rounded-xl p-1 shadow-sm">
-                        <button type="button" onclick="adjustQty('ballStdQty', -1)" class="w-8 h-8 rounded-lg bg-gray-100 text-gray-700 font-bold flex items-center justify-center hover:bg-gray-200 active:scale-90 transition">-</button>
-                        <input type="number" id="ballStdQty" value="0" min="0" readonly class="w-10 text-center text-sm font-bold bg-transparent outline-none">
-                        <button type="button" onclick="adjustQty('ballStdQty', 1)" class="w-8 h-8 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center hover:bg-blue-700 active:scale-90 transition">+</button>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100">
-                    <div>
-                        <p class="font-semibold text-sm text-gray-800">Bola Premium</p>
-                        <p class="text-xs text-gray-500">RM <span id="labelBallPrem">19.00</span> / pc</p>
-                    </div>
-                    <div class="flex items-center bg-white border rounded-xl p-1 shadow-sm">
-                        <button type="button" onclick="adjustQty('ballPremQty', -1)" class="w-8 h-8 rounded-lg bg-gray-100 text-gray-700 font-bold flex items-center justify-center hover:bg-gray-200 active:scale-90 transition">-</button>
-                        <input type="number" id="ballPremQty" value="0" min="0" readonly class="w-10 text-center text-sm font-bold bg-transparent outline-none">
-                        <button type="button" onclick="adjustQty('ballPremQty', 1)" class="w-8 h-8 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center hover:bg-blue-700 active:scale-90 transition">+</button>
-                    </div>
+                <div class="flex justify-between items-center text-sm font-black pt-1">
+                    <span class="text-white">JUMLAH KESELURUHAN:</span>
+                    <span id="totalPriceDisplay" class="text-emerald-400 text-base">RM 0.00</span>
                 </div>
             </div>
 
-            <!-- Panel Ringkasan Pembayaran & Resit -->
-            <div class="bg-gray-50 p-4 sm:p-6 rounded-2xl border border-gray-200 flex flex-col justify-between">
-                <div>
-                    <h2 class="text-lg font-bold text-gray-800 border-b pb-2 mb-4 flex items-center gap-2">
-                        <span class="bg-blue-600 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">3</span>
-                        Ringkasan Bayaran
-                    </h2>
-                    
-                    <div class="space-y-2.5 text-sm text-gray-600">
-                        <div class="flex justify-between">
-                            <span>Sewa Gelanggang:</span>
-                            <span id="courtPriceDisplay" class="font-semibold text-gray-800">RM 0.00</span>
-                        </div>
-                        <div class="flex justify-between text-xs text-gray-500 italic pl-2">
-                            <span id="hoursBreakdownDisplay">-</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Sewa Paddle:</span>
-                            <span id="paddlePriceDisplay" class="font-semibold text-gray-800">RM 0.00</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Bola Standard:</span>
-                            <span id="ballStdPriceDisplay" class="font-semibold text-gray-800">RM 0.00</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Bola Premium:</span>
-                            <span id="ballPremPriceDisplay" class="font-semibold text-gray-800">RM 0.00</span>
-                        </div>
-                        <hr class="my-3 border-gray-300">
-                        <div class="flex justify-between text-base sm:text-lg font-black text-gray-900">
-                            <span>JUMLAH:</span>
-                            <span id="totalPriceDisplay" class="text-blue-600 text-xl">RM 0.00</span>
-                        </div>
-                    </div>
+            <!-- Payment Method Selector -->
+            <div>
+                <label class="text-[11px] text-slate-400 font-medium block mb-1">Pilih Kaedah Bayaran</label>
+                <select id="paymentMethod" onchange="togglePaymentQR()" class="w-full bg-slate-950 border border-slate-700 text-white rounded-xl p-2.5 text-xs font-bold focus:ring-1 focus:ring-amber-500 outline-none">
+                    <option value="duitnow">DuitNow QR / Bank Transfer</option>
+                    <option value="tng">Touch 'n Go eWallet</option>
+                </select>
+            </div>
 
-                    <!-- Pilihan Kaedah Pembayaran -->
-                    <div class="mt-4 border-t pt-3">
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Kaedah Pembayaran Online</label>
-                        <select id="paymentMethod" onchange="togglePaymentQR()" class="w-full p-3 text-sm border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium">
-                            <option value="duitnow">DuitNow QR / Bank Transfer</option>
-                            <option value="tng">Touch 'n Go eWallet</option>
-                        </select>
-                    </div>
-
-                    <!-- Paparan Imbas Kod QR -->
-                    <div id="merchantQrBox" class="mt-4 p-4 bg-blue-50/70 rounded-xl border border-blue-200 text-center">
-                        <p id="qrTitle" class="text-xs font-bold text-gray-700 uppercase mb-2">Imbas Kod QR Untuk Bayar Sebelum Tempah</p>
-                        
-                        <img id="merchantQrImg" src="qr-duitnow.png" alt="Kod QR Pembayaran" class="w-36 h-36 sm:w-40 sm:h-40 mx-auto object-contain bg-white p-2 rounded-xl shadow-sm border">
-                        
-                        <div class="mt-3 p-2.5 bg-white rounded-lg border border-blue-100 text-left text-xs space-y-1">
-                            <p class="text-gray-500">Bank / Wallet: <b id="displayBankName" class="text-gray-800">Maybank</b></p>
-                            <p class="text-gray-500">Pemegang: <b id="displayAccName" class="text-gray-800">MOHD FARIS AFNAN BIN ZAHARI</b></p>
-                            <p class="text-gray-500">No. Akaun: <b id="displayAccNo" class="text-blue-700 font-mono text-sm break-all">153029150514</b></p>
-                        </div>
-
-                        <p class="text-xs text-gray-600 mt-2.5">Sila jelaskan bayaran sebanyak <b id="qrAmountDisplay" class="text-blue-700 font-extrabold text-sm">RM 0.00</b> dahulu.</p>
-
-                        <div class="mt-3 text-left">
-                            <label class="block text-xs font-bold text-red-600 mb-1">Muat Naik Resit (*Wajib):</label>
-                            <input type="file" id="paymentProof" accept="image/*,.pdf" class="w-full text-xs p-2 bg-white border rounded-lg cursor-pointer">
-                        </div>
-                    </div>
-
-                    <button onclick="generateReceipt()" class="w-full mt-5 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition duration-150 text-sm sm:text-base">
-                        Hantar Tempahan & Bukti Bayaran
-                    </button>
+            <!-- QR Code Merchant Card -->
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 text-center space-y-3">
+                <div id="qrTitle" class="text-xs font-bold text-amber-400">Imbas Kod QR DuitNow</div>
+                
+                <div class="bg-white p-2 rounded-xl inline-block shadow-lg">
+                    <img id="merchantQrImg" src="qr-duitnow.png" alt="QR Bayaran" class="w-40 h-40 object-contain mx-auto">
                 </div>
 
-                <!-- Paparan QR Code & Status Resit -->
-                <div id="receiptSection" class="hidden mt-6 pt-4 border-t border-dashed border-gray-400 text-center space-y-3">
-                    <div id="approvalStatusBadge" class="bg-amber-100 border border-amber-300 text-amber-800 text-xs px-3 py-1.5 rounded-lg font-bold inline-block">
-                        ⏳ Menunggu Kelulusan Owner
-                    </div>
-                    <h3 class="font-bold text-gray-800 text-sm">🎟️ TIKET TEMPAHAN SEMASA</h3>
-                    <p id="refNo" class="text-xs text-gray-500 font-mono my-1"></p>
-                    <p id="payMethodDisplay" class="text-xs text-blue-600 font-semibold mb-2"></p>
-                    <div id="qrcode" class="flex justify-center my-3"></div>
-                    <p class="text-xs text-gray-500">Sila klik butang di bawah untuk menghantar gambar resit ke WhatsApp Owner bagi tujuan pengesahan.</p>
-                    
-                    <button id="whatsappBtn" onclick="sendToWhatsappOwner()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2 text-sm active:scale-95">
-                        💬 Hantar Bukti Resit Ke WhatsApp Owner
-                    </button>
+                <div class="text-[11px] space-y-0.5 text-slate-300">
+                    <p><b id="displayBankName" class="text-amber-400">Maybank</b></p>
+                    <p><span id="displayAccName">MOHD FARIS AFNAN BIN ZAHARI</span></p>
+                    <p class="font-mono text-amber-300 font-bold" id="displayAccNo">153029150514</p>
+                    <p class="text-[10px] text-slate-400 pt-1">Sila bayar tepat: <b id="qrAmountDisplay" class="text-emerald-400">RM 0.00</b></p>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- MODAL DASHBOARD KAWALAN OWNER -->
-    <div id="adminModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50 overflow-y-auto">
-        <div class="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center border-b pb-3 mb-4">
-                <h2 class="text-lg sm:text-xl font-bold text-gray-800">⚙️ Dashboard Owner (Realtime Cloud)</h2>
-                <button onclick="closeAdminModal()" class="text-gray-400 hover:text-gray-600 font-bold text-2xl px-2">&times;</button>
+            <!-- Proof Upload Input -->
+            <div>
+                <label class="text-[11px] text-slate-400 font-medium block mb-1">Muat Naik Resit Bayaran (Wajib)</label>
+                <input type="file" id="paymentProof" accept="image/*" class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-amber-400 hover:file:bg-slate-700 border border-slate-800 rounded-xl bg-slate-950">
             </div>
+
+            <!-- Submit Button -->
+            <button type="button" onclick="generateReceipt()" class="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-98 text-slate-950 font-black rounded-xl text-sm shadow-lg shadow-amber-500/20 transition">
+                HANTAR TEMPAHAN NOW
+            </button>
+        </section>
+
+        <!-- RECEIPT / TICKET SECTION -->
+        <section id="receiptSection" class="hidden bg-slate-900 border border-amber-500/50 rounded-2xl p-5 shadow-2xl space-y-4 text-center">
+            <div class="inline-block p-2 bg-emerald-500/10 text-emerald-400 rounded-full text-2xl mb-1">🎉</div>
+            <h2 class="text-base font-black text-white">TEMPAHAN BERHASIL!</h2>
+            <p class="text-xs text-slate-400">Sila hantar resit di bawah kepada owner melalui WhatsApp untuk pengesahan slot.</p>
+
+            <div class="bg-slate-950 border border-slate-800 p-4 rounded-xl text-left space-y-3 font-mono text-xs">
+                <div class="flex justify-between border-b border-slate-800 pb-2">
+                    <span class="text-slate-500" id="refNo">Ref ID: -</span>
+                    <span class="text-amber-400 font-bold" id="payMethodDisplay">DuitNow</span>
+                </div>
+                <div class="flex justify-center my-2">
+                    <div id="qrcode" class="p-2 bg-white rounded-lg"></div>
+                </div>
+                <p class="text-[10px] text-slate-400 text-center">Tunjukkan Kod QR ini semasa ketibaan di EM6 Arena.</p>
+            </div>
+
+            <button type="button" onclick="sendToWhatsappOwner()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black rounded-xl text-xs shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2">
+                <span>💬</span> Hantar Terus Ke WhatsApp Owner
+            </button>
+        </section>
+
+    </main>
+
+    <!-- ADMIN / OWNER MODAL -->
+    <div id="adminModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
             
-            <div class="flex border-b mb-4 overflow-x-auto no-scrollbar whitespace-nowrap gap-2 pb-1 text-xs sm:text-sm">
-                <button id="tabLaporanBtn" onclick="switchTab('laporan')" class="py-2 px-3 font-semibold border-b-2 border-blue-600 text-blue-600">Rekod & Semakan Resit</button>
-                <button id="tabHargaBtn" onclick="switchTab('harga')" class="py-2 px-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-blue-600">Harga</button>
-                <button id="tabQrBtn" onclick="switchTab('qr')" class="py-2 px-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-blue-600">Akaun & QR</button>
-                <button id="tabCourtBtn" onclick="switchTab('court')" class="py-2 px-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-blue-600">Status Court</button>
-                <button id="tabSecurityBtn" onclick="switchTab('security')" class="py-2 px-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-blue-600">PIN</button>
+            <div class="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
+                <h3 class="font-bold text-sm text-white">⚙️ Control Center Owner</h3>
+                <button onclick="closeAdminModal()" class="text-slate-400 hover:text-white font-bold text-sm">✕</button>
             </div>
 
-            <!-- Tab 1: Rekod & Kelulusan Resit -->
-            <div id="tabLaporan" class="space-y-3">
-                <div class="flex justify-between items-center bg-blue-50 p-3 rounded-xl">
-                    <span class="font-semibold text-xs sm:text-sm text-blue-800">Jumlah Pendapatan (Lunas):</span>
-                    <span id="totalRevenue" class="text-base sm:text-lg font-bold text-blue-900">RM 0.00</span>
-                </div>
-
-                <div class="flex gap-2">
-                    <input type="text" id="searchBookingInput" onkeyup="filterBookings()" placeholder="🔍 Cari nama / Ref ID / Tarikh..." class="w-full p-2.5 border rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500">
-                    <button onclick="downloadBookingsCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-2.5 rounded-xl font-bold flex items-center gap-1 whitespace-nowrap shadow-sm active:scale-95 transition">
-                        📥 Download CSV
-                    </button>
-                </div>
-
-                <div class="max-h-72 overflow-x-auto border rounded-xl bg-gray-50">
-                    <table class="w-full text-xs text-left border-collapse min-w-[750px]">
-                        <thead class="bg-gray-200 border-b sticky top-0">
-                            <tr>
-                                <th class="p-2 border-r">Ref ID</th>
-                                <th class="p-2 border-r">Tarikh & Hari</th>
-                                <th class="p-2 border-r">Pelanggan</th>
-                                <th class="p-2 border-r">Slot Gelanggang</th>
-                                <th class="p-2 border-r">Jumlah</th>
-                                <th class="p-2 border-r text-center">Status</th>
-                                <th class="p-2 text-center">Tindakan Owner</th>
-                            </tr>
-                        </thead>
-                        <tbody id="bookingHistoryTable"></tbody>
-                    </table>
-                </div>
-                <div class="flex justify-between items-center pt-2">
-                    <span class="text-xs text-gray-500">Jumlah Rekod: <b id="bookingCount">0</b></span>
-                    <button onclick="clearHistory()" class="text-xs text-red-600 hover:underline">Padam Sejarah Database</button>
-                </div>
+            <!-- Modal Navigation Tabs -->
+            <div class="flex border-b border-slate-800 text-xs bg-slate-950 px-2 overflow-x-auto no-scrollbar">
+                <button id="tabLaporanBtn" onclick="switchTab('laporan')" class="py-2.5 px-3 font-bold border-b-2 border-amber-500 text-amber-500">Laporan</button>
+                <button id="tabHargaBtn" onclick="switchTab('harga')" class="py-2.5 px-3 text-slate-400 hover:text-white">Harga</button>
+                <button id="tabQrBtn" onclick="switchTab('qr')" class="py-2.5 px-3 text-slate-400 hover:text-white">Akaun QR</button>
+                <button id="tabCourtBtn" onclick="switchTab('court')" class="py-2.5 px-3 text-slate-400 hover:text-white">Gelanggang</button>
             </div>
 
-            <!-- Tab 2: Harga -->
-            <div id="tabHarga" class="hidden space-y-3">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-xs font-semibold text-gray-600">Harga Off-Peak / Pagi-Siang (RM/Jam)</label>
-                        <input type="number" id="settingOffPeak" class="w-full p-2.5 border rounded-lg mt-1 text-sm">
+            <div class="p-4 overflow-y-auto space-y-4 text-xs flex-1">
+                
+                <!-- TAB 1: LAPORAN TEMPAHAN -->
+                <div id="tabLaporan" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                            <div class="text-[10px] text-slate-400">Jumlah Terkumpul</div>
+                            <div id="totalRevenue" class="text-sm font-black text-emerald-400">RM 0.00</div>
+                        </div>
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                            <div class="text-[10px] text-slate-400">Jumlah Tempahan</div>
+                            <div id="bookingCount" class="text-sm font-black text-amber-400">0</div>
+                        </div>
                     </div>
-                    <div>
-                        <label class="text-xs font-semibold text-gray-600">Harga Peak / Petang-Malam (RM/Jam)</label>
-                        <input type="number" id="settingPeak" class="w-full p-2.5 border rounded-lg mt-1 text-sm">
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-[11px] border-collapse">
+                            <thead>
+                                <tr class="border-b border-slate-800 text-slate-400">
+                                    <th class="p-2">ID</th>
+                                    <th class="p-2">Pelanggan</th>
+                                    <th class="p-2">Jumlah</th>
+                                    <th class="p-2 text-center">Status</th>
+                                    <th class="p-2 text-center">Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bookingHistoryTable">
+                                <!-- Dynamic rows -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                    <div>
-                        <label class="text-xs font-semibold text-gray-600">Sewa Paddle (RM/2pcs)</label>
-                        <input type="number" id="settingPaddle" class="w-full p-2.5 border rounded-lg mt-1 text-sm">
+
+                <!-- TAB 2: TETAPAN HARGA -->
+                <div id="tabHarga" class="hidden space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] text-slate-400">Harga Off-Peak (RM/j)</label>
+                            <input type="number" id="settingOffPeak" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-400">Harga Peak (RM/j)</label>
+                            <input type="number" id="settingPeak" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
+                        </div>
                     </div>
-                    <div>
-                        <label class="text-xs font-semibold text-gray-600">Bola Standard (RM/pc)</label>
-                        <input type="number" id="settingBallStd" class="w-full p-2.5 border rounded-lg mt-1 text-sm">
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold text-gray-600">Bola Premium (RM/pc)</label>
-                        <input type="number" id="settingBallPrem" class="w-full p-2.5 border rounded-lg mt-1 text-sm">
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="text-[10px] text-slate-400">Sewa Paddle</label>
+                            <input type="number" id="settingPaddle" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-400">Bola Standard</label>
+                            <input type="number" id="settingBallStd" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-400">Bola Premium</label>
+                            <input type="number" id="settingBallPrem" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
+                        </div>
                     </div>
                 </div>
-                <button onclick="saveAdminSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Simpan Tetapan Harga</button>
-            </div>
 
-            <!-- Tab 3: Bank/QR -->
-            <div id="tabQr" class="hidden space-y-3">
-                <div class="p-3 bg-gray-50 border rounded-xl space-y-2">
-                    <h4 class="font-bold text-xs text-gray-700">Maklumat Bank / DuitNow</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input type="text" id="settingBankName" placeholder="Nama Bank" class="p-2 border rounded-lg text-xs">
-                        <input type="text" id="settingBankAccNo" placeholder="No Akaun Bank" class="p-2 border rounded-lg text-xs">
+                <!-- TAB 3: TETAPAN BANK & QR -->
+                <div id="tabQr" class="hidden space-y-3">
+                    <div>
+                        <label class="text-[10px] text-slate-400">Nama Bank DuitNow</label>
+                        <input type="text" id="settingBankName" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
                     </div>
-                    <input type="text" id="settingBankAccName" placeholder="Nama Pemegang Akaun" class="w-full p-2 border rounded-lg text-xs">
-                    <input type="text" id="settingDuitNowQr" placeholder="Fail Gambar QR" class="w-full p-2 border rounded-lg text-xs">
+                    <div>
+                        <label class="text-[10px] text-slate-400">No. Akaun DuitNow</label>
+                        <input type="text" id="settingBankAccNo" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-400">Nama Pemegang Akaun</label>
+                        <input type="text" id="settingBankAccName" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-400">Fail QR DuitNow (Gambar)</label>
+                        <input type="text" id="settingDuitNowQr" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white" placeholder="qr-duitnow.png">
+                    </div>
+                    <hr class="border-slate-800 my-2">
+                    <div>
+                        <label class="text-[10px] text-slate-400">No. Akaun TNG eWallet</label>
+                        <input type="text" id="settingTngAccNo" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-400">Nama TNG eWallet</label>
+                        <input type="text" id="settingTngAccName" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-400">Fail QR TNG (Gambar)</label>
+                        <input type="text" id="settingTngQr" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white" placeholder="qr-tng.png">
+                    </div>
                 </div>
 
-                <div class="p-3 bg-gray-50 border rounded-xl space-y-2">
-                    <h4 class="font-bold text-xs text-gray-700">Maklumat Touch 'n Go eWallet</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input type="text" id="settingTngAccNo" placeholder="No Telefon TNG" class="p-2 border rounded-lg text-xs">
-                        <input type="text" id="settingTngAccName" placeholder="Nama Pemegang TNG" class="p-2 border rounded-lg text-xs">
-                    </div>
-                    <input type="text" id="settingTngQr" placeholder="Fail Gambar QR" class="w-full p-2 border rounded-lg text-xs">
-                </div>
-
-                <button onclick="saveQrSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Simpan Maklumat Akaun</button>
-            </div>
-
-            <!-- Tab 4: Gelanggang -->
-            <div id="tabCourt" class="hidden space-y-3">
-                <div class="space-y-2">
-                    <label class="flex items-center space-x-3 border p-3 rounded-xl cursor-pointer hover:bg-gray-50">
-                        <input type="checkbox" id="court1Active" class="w-5 h-5 text-blue-600 rounded">
-                        <span class="font-medium text-sm text-gray-700">Gelanggang 1 (Court 1)</span>
+                <!-- TAB 4: TETAPAN GELANGGANG -->
+                <div id="tabCourt" class="hidden space-y-3">
+                    <label class="flex items-center gap-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <input type="checkbox" id="court1Active" class="rounded text-amber-500 focus:ring-0">
+                        <span>Court 1 (Open) - Buka</span>
                     </label>
-                    <label class="flex items-center space-x-3 border p-3 rounded-xl cursor-pointer hover:bg-gray-50">
-                        <input type="checkbox" id="court2Active" class="w-5 h-5 text-blue-600 rounded">
-                        <span class="font-medium text-sm text-gray-700">Gelanggang 2 (VIP Court)</span>
+                    <label class="flex items-center gap-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <input type="checkbox" id="court2Active" class="rounded text-amber-500 focus:ring-0">
+                        <span>Court 2 (VIP Indoor) - Buka</span>
                     </label>
-                    <label class="flex items-center space-x-3 border p-3 rounded-xl cursor-pointer hover:bg-gray-50">
-                        <input type="checkbox" id="court3Active" class="w-5 h-5 text-blue-600 rounded">
-                        <span class="font-medium text-sm text-gray-700">Gelanggang 3 (Court 3)</span>
+                    <label class="flex items-center gap-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800">
+                        <input type="checkbox" id="court3Active" class="rounded text-amber-500 focus:ring-0">
+                        <span>Court 3 (Open) - Buka</span>
                     </label>
                 </div>
-                <button onclick="saveCourtSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Kemaskini Status Gelanggang</button>
+
             </div>
 
-            <!-- Tab 5: Keselamatan -->
-            <div id="tabSecurity" class="hidden space-y-3">
-                <div>
-                    <label class="text-xs font-semibold text-gray-600">PIN Baru Owner</label>
-                    <input type="password" id="newPinInput" placeholder="Masukkan 4 angka PIN baru" class="w-full p-2.5 border rounded-lg mt-1 text-sm">
-                </div>
-                <button onclick="updatePin()" class="w-full mt-4 bg-red-600 text-white font-semibold py-3 rounded-xl hover:bg-red-700 active:scale-98">Tukar PIN Owner</button>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- MODAL EDIT TEMPAHAN (DIPANGGIL OLEH OWNER) -->
-    <div id="editBookingModal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-        <div class="bg-white rounded-2xl shadow-2xl p-5 max-w-lg w-full space-y-4">
-            <div class="flex justify-between items-center border-b pb-2">
-                <h3 class="font-bold text-gray-800">✏️ Edit Tempahan Pelanggan</h3>
-                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 font-bold text-xl">&times;</button>
-            </div>
-
-            <input type="hidden" id="editRefId">
-            
-            <div class="space-y-3 text-xs">
-                <div>
-                    <label class="font-semibold text-gray-700">Nama Pelanggan:</label>
-                    <input type="text" id="editCustName" class="w-full p-2 border rounded-lg mt-1 text-xs">
-                </div>
-                <div>
-                    <label class="font-semibold text-gray-700">No. WhatsApp:</label>
-                    <input type="text" id="editCustPhone" class="w-full p-2 border rounded-lg mt-1 text-xs">
-                </div>
-                <div>
-                    <label class="font-semibold text-gray-700">Tarikh Tempahan:</label>
-                    <input type="date" id="editDate" class="w-full p-2 border rounded-lg mt-1 text-xs">
-                </div>
-                <div>
-                    <label class="font-semibold text-gray-700">Jumlah Bayaran (RM):</label>
-                    <input type="number" step="0.01" id="editAmount" class="w-full p-2 border rounded-lg mt-1 text-xs font-bold text-blue-700">
-                </div>
-                <div>
-                    <label class="font-semibold text-gray-700">Status Tempahan:</label>
-                    <select id="editStatus" class="w-full p-2 border rounded-lg mt-1 text-xs font-bold">
-                        <option value="Menunggu Kelulusan">⏳ Menunggu Kelulusan</option>
-                        <option value="Diluluskan">✅ Diluluskan (Booked)</option>
-                        <option value="Ditolak">❌ Ditolak / Batal</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="flex gap-2 pt-2">
-                <button onclick="saveEditBooking()" class="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-xs hover:bg-emerald-700">Simpan Perubahan</button>
-                <button onclick="closeEditModal()" class="bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl font-bold text-xs hover:bg-gray-300">Batal</button>
+            <div class="p-3 bg-slate-950 border-t border-slate-800 flex justify-end">
+                <button type="button" onclick="saveSettings()" class="px-4 py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-amber-400">Simpan Tetapan</button>
             </div>
         </div>
     </div>
 
-    <!-- JavaScript Logik Aplikasi & Firebase Sync -->
+    <!-- MAIN JAVASCRIPT LOGIC -->
     <script>
-        // =========================================================================
-        // 🚨 SILA MASUKKAN URL REALTIME DATABASE FIREBASE ANDA DI SINI! 🚨
-        // Contoh: "https://em6-pickleball-xxxx-default-rtdb.asia-southeast1.firebasedatabase.app"
-        // =========================================================================
-        const FIREBASE_DATABASE_URL = "https://EM6-PICKLEBALL-ARENA-DEFAULT-RTDB.ASIA-SOUTHEAST1.FIREBASEDATABASE.APP"; 
-        
+        // --- 1. DYNAMIC PWA MANIFEST CREATOR (AUTOMATIK BINA APP TELEFON) ---
+        (function initDynamicPWA() {
+            const manifestData = {
+                "name": "EM6 Pickleball Arena",
+                "short_name": "EM6 Arena",
+                "start_url": "./",
+                "display": "standalone",
+                "background_color": "#0f172a",
+                "theme_color": "#0f172a",
+                "orientation": "portrait",
+                "icons": [{
+                    "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏓</text></svg>",
+                    "sizes": "192x192 512x512",
+                    "type": "image/svg+xml"
+                }]
+            };
+            const stringManifest = JSON.stringify(manifestData);
+            const blob = new Blob([stringManifest], {type: 'application/json'});
+            const manifestURL = URL.createObjectURL(blob);
+            document.getElementById('manifestLink').setAttribute('href', manifestURL);
+        })();
+
+        // --- 2. CONFIGURATION & STATE ---
+        const FIREBASE_DATABASE_URL = ""; // Masukkan URL Firebase Realtime Database anda jika ada
+        const OWNER_WHATSAPP = "60179610108"; 
+
         let db = null;
         let isFirebaseConnected = false;
 
-        const OWNER_WHATSAPP = "60179610108";
-
         const COURTS_DATA = [
-            { id: "court1", name: "Gelanggang 1 (Court 1)" },
-            { id: "court2", name: "Gelanggang 2 (VIP Court)" },
-            { id: "court3", name: "Gelanggang 3 (Court 3)" }
+            { id: "court1", name: "Court 1 (Open)" },
+            { id: "court2", name: "Court 2 (VIP Indoor)" },
+            { id: "court3", name: "Court 3 (Open)" }
         ];
 
         const ALL_SLOTS = [
@@ -473,704 +471,553 @@
             { startHour: 23, displayTime: "11:00 PM", type: "peak" }
         ];
 
-        const TIME_LABEL_MAP = {
-            8: "08:00 AM", 9: "09:00 AM", 10: "10:00 AM", 11: "11:00 AM",
-            12: "12:00 PM", 13: "01:00 PM", 14: "02:00 PM", 15: "03:00 PM",
-            16: "04:00 PM", 17: "05:00 PM", 18: "06:00 PM", 19: "07:00 PM",
-            20: "08:00 PM", 21: "09:00 PM", 22: "10:00 PM", 23: "11:00 PM",
-            24: "12:00 AM"
-        };
-
-        const DAYS_MY = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
-
-        let selectedCourtSlots = [];
-        let currentBookingRef = "";
-        let qrCodeInstance = null;
-
-        // TETAPAN DEFAULT KEMAS KINI
-        let defaultSettings = {
-            offPeakPrice: 20.00,
-            peakPrice: 35.00,
+        let settings = {
+            offpeakPrice: 15.00,
+            peakPrice: 25.00,
             paddlePrice: 5.00,
             ballStdPrice: 5.00,
             ballPremPrice: 19.00,
-            pin: "1234",
-            activeCourts: { court1: true, court2: true, court3: true },
-            qr: {
-                bankName: "Maybank",
-                accNo: "153029150514",
-                accName: "MOHD FARIS AFNAN BIN ZAHARI",
-                duitnowImg: "qr-duitnow.png",
-                tngNo: "121859829522",
-                tngName: "MOHD FARIS AFNAN BIN ZAHARI",
-                tngImg: "qr-tng.png"
-            }
+            ownerPin: "1234",
+            bankName: "Maybank",
+            bankAccNo: "153029150514",
+            bankAccName: "MOHD FARIS AFNAN BIN ZAHARI",
+            duitNowQrImg: "qr-duitnow.png",
+            tngAccNo: "0179610108",
+            tngAccName: "MOHD FARIS AFNAN",
+            tngQrImg: "qr-tng.png",
+            court1Active: true,
+            court2Active: true,
+            court3Active: true
         };
 
-        // Muat turun dari localStorage jika tiada Firebase
-        let settings = JSON.parse(localStorage.getItem('em6_settings')) || defaultSettings;
-        let bookings = JSON.parse(localStorage.getItem('em6_bookings')) || [];
+        let selectedSlots = [];
+        let allBookings = {};
+        let currentGeneratedRef = "";
 
-        window.onload = function() {
+        // --- 3. INIT & LOCAL STORAGE AUTOFILL ---
+        window.addEventListener('DOMContentLoaded', () => {
+            initFirebase();
+            setDefaultDate();
+            initPriceInputs();
+            loadSavedCustomerInfo();
+        });
+
+        function saveCustomerInfoLocally(name, phone) {
+            localStorage.setItem("em6_cust_name", name);
+            localStorage.setItem("em6_cust_phone", phone);
+        }
+
+        function loadSavedCustomerInfo() {
+            const savedName = localStorage.getItem("em6_cust_name");
+            const savedPhone = localStorage.getItem("em6_cust_phone");
+            if(savedName) document.getElementById("custName").value = savedName;
+            if(savedPhone) document.getElementById("custPhone").value = savedPhone;
+        }
+
+        function setQuickDate(daysToAdd) {
+            const targetDate = new Date();
+            targetDate.setDate(targetDate.getDate() + daysToAdd);
+            
+            const yyyy = targetDate.getFullYear();
+            const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(targetDate.getDate()).padStart(2, '0');
+            
+            const formattedDate = `${yyyy}-${mm}-${dd}`;
+            document.getElementById("bookingDate").value = formattedDate;
+            onDateChange();
+        }
+
+        function initFirebase() {
+            try {
+                if (FIREBASE_DATABASE_URL && FIREBASE_DATABASE_URL !== "") {
+                    firebase.initializeApp({ databaseURL: FIREBASE_DATABASE_URL });
+                    db = firebase.database();
+                    
+                    db.ref(".info/connected").on("value", (snap) => {
+                        if (snap.val() === true) {
+                            isFirebaseConnected = true;
+                            updateSyncStatus(true, "Terhubung (Live Database)");
+                        } else {
+                            isFirebaseConnected = false;
+                            updateSyncStatus(false, "Mod Luar Talian (Offline)");
+                        }
+                    });
+
+                    db.ref("settings").on("value", (snapshot) => {
+                        const data = snapshot.val();
+                        if (data) {
+                            settings = { ...settings, ...data };
+                            initPriceInputs();
+                            renderCourtGrid();
+                            calculateTotal();
+                            togglePaymentQR();
+                        }
+                    });
+
+                    db.ref("bookings").on("value", (snapshot) => {
+                        allBookings = snapshot.val() || {};
+                        renderCourtGrid();
+                        renderBookingTable();
+                    });
+
+                } else {
+                    updateSyncStatus(false, "Penyimpanan Lokal");
+                    renderCourtGrid();
+                }
+            } catch (e) {
+                console.error("Firebase Error:", e);
+                updateSyncStatus(false, "Ralat Sambungan");
+                renderCourtGrid();
+            }
+        }
+
+        function updateSyncStatus(connected, text) {
+            const statusDot = document.getElementById("syncStatus");
+            const statusText = document.getElementById("syncText");
+            if (connected) {
+                statusDot.className = "inline-block w-2 h-2 bg-emerald-500 rounded-full animate-pulse";
+                statusText.innerText = text;
+                statusText.className = "text-emerald-400 font-semibold";
+            } else {
+                statusDot.className = "inline-block w-2 h-2 bg-amber-500 rounded-full";
+                statusText.innerText = text;
+                statusText.className = "text-amber-400 font-semibold";
+            }
+        }
+
+        function setDefaultDate() {
             const today = new Date();
             const yyyy = today.getFullYear();
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             const dd = String(today.getDate()).padStart(2, '0');
+            const formattedDate = `${yyyy}-${mm}-${dd}`;
             
-            const dateInput = document.getElementById('bookingDate');
-            dateInput.value = `${yyyy}-${mm}-${dd}`;
+            const dateInput = document.getElementById("bookingDate");
+            dateInput.value = formattedDate;
+            dateInput.min = formattedDate;
             
-            updateDayFromDate();
-            loadSettingsToUI();
-            renderVisualCourts();
-            calculateTotal();
+            updateDayFromDate(formattedDate);
+        }
 
-            // Sedia Firebase jika URL telah diisi
-            initFirebase();
-        };
-
-        function initFirebase() {
-            const syncBadge = document.getElementById('syncStatus');
-            const syncText = document.getElementById('syncText');
-
-            if (FIREBASE_DATABASE_URL && !FIREBASE_DATABASE_URL.includes("DEFAULT-RTDB")) {
-                try {
-                    firebase.initializeApp({ databaseURL: FIREBASE_DATABASE_URL });
-                    db = firebase.database();
-                    isFirebaseConnected = true;
-
-                    syncBadge.className = "inline-block w-2.5 h-2.5 bg-emerald-500 rounded-full";
-                    syncText.innerText = "Terhubung ke Database Cloud (Real-Time)";
-
-                    // 1. Listen Tetapan
-                    db.ref('em6_settings').on('value', (snapshot) => {
-                        const cloudSettings = snapshot.val();
-                        if (cloudSettings) {
-                            settings = cloudSettings;
-                            localStorage.setItem('em6_settings', JSON.stringify(settings));
-                        } else {
-                            db.ref('em6_settings').set(settings);
-                        }
-                        loadSettingsToUI();
-                        renderVisualCourts();
-                        calculateTotal();
-                        togglePaymentQR();
-                    });
-
-                    // 2. Listen Tempahan
-                    db.ref('em6_bookings').on('value', (snapshot) => {
-                        const cloudBookings = snapshot.val();
-                        bookings = cloudBookings ? Object.values(cloudBookings) : [];
-                        localStorage.setItem('em6_bookings', JSON.stringify(bookings));
-                        
-                        renderVisualCourts();
-                        if (!document.getElementById('adminModal').classList.contains('hidden')) {
-                            renderAdminBookings();
-                        }
-                    });
-
-                } catch (e) {
-                    console.error("Firebase Connection Error:", e);
-                    setFallbackStatus();
-                }
-            } else {
-                setFallbackStatus();
+        function updateDayFromDate(dateStr) {
+            const daysMap = ["Ahad", "Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu"];
+            const d = new Date(dateStr);
+            if (!isNaN(d.getTime())) {
+                const dayName = daysMap[d.getDay()];
+                document.getElementById("bookingDay").value = dayName;
+                document.getElementById("selectedDateDisplay").innerText = `Tarikh Dipilih: ${dateStr} (${dayName})`;
             }
-        }
-
-        function setFallbackStatus() {
-            const syncBadge = document.getElementById('syncStatus');
-            const syncText = document.getElementById('syncText');
-            syncBadge.className = "inline-block w-2.5 h-2.5 bg-blue-500 rounded-full";
-            syncText.innerText = "Mod Simpanan Tempatan (Local Storage)";
-        }
-
-        function syncDataToStorage() {
-            localStorage.setItem('em6_settings', JSON.stringify(settings));
-            localStorage.setItem('em6_bookings', JSON.stringify(bookings));
-
-            if (isFirebaseConnected && db) {
-                db.ref('em6_settings').set(settings);
-                
-                const bookingsObj = {};
-                bookings.forEach(b => { bookingsObj[b.refId] = b; });
-                db.ref('em6_bookings').set(bookingsObj);
-            }
-        }
-
-        function loadSettingsToUI() {
-            document.getElementById('labelPaddle').innerText = parseFloat(settings.paddlePrice).toFixed(2);
-            document.getElementById('labelBallStd').innerText = parseFloat(settings.ballStdPrice).toFixed(2);
-            document.getElementById('labelBallPrem').innerText = parseFloat(settings.ballPremPrice).toFixed(2);
-
-            document.getElementById('settingOffPeak').value = settings.offPeakPrice;
-            document.getElementById('settingPeak').value = settings.peakPrice;
-            document.getElementById('settingPaddle').value = settings.paddlePrice;
-            document.getElementById('settingBallStd').value = settings.ballStdPrice;
-            document.getElementById('settingBallPrem').value = settings.ballPremPrice;
-
-            document.getElementById('settingBankName').value = settings.qr.bankName;
-            document.getElementById('settingBankAccNo').value = settings.qr.accNo;
-            document.getElementById('settingBankAccName').value = settings.qr.accName;
-            document.getElementById('settingDuitNowQr').value = settings.qr.duitnowImg;
-            document.getElementById('settingTngAccNo').value = settings.qr.tngNo;
-            document.getElementById('settingTngAccName').value = settings.qr.tngName;
-            document.getElementById('settingTngQr').value = settings.qr.tngImg;
-
-            document.getElementById('court1Active').checked = settings.activeCourts.court1;
-            document.getElementById('court2Active').checked = settings.activeCourts.court2;
-            document.getElementById('court3Active').checked = settings.activeCourts.court3;
-
-            togglePaymentQR();
-        }
-
-        function updateDayFromDate() {
-            const dateVal = document.getElementById('bookingDate').value;
-            if(!dateVal) return;
-            const dateObj = new Date(dateVal);
-            const dayName = DAYS_MY[dateObj.getDay()];
-            document.getElementById('bookingDay').value = dayName;
-            document.getElementById('selectedDateDisplay').innerText = `Paparan untuk: ${dateVal} (${dayName})`;
         }
 
         function onDateChange() {
-            updateDayFromDate();
-            selectedCourtSlots = [];
-            renderVisualCourts();
+            const dateVal = document.getElementById("bookingDate").value;
+            updateDayFromDate(dateVal);
+            selectedSlots = [];
+            renderCourtGrid();
             calculateTotal();
         }
 
-        function onDayChange() {
-            const dayName = document.getElementById('bookingDay').value;
-            const dateVal = document.getElementById('bookingDate').value;
-            document.getElementById('selectedDateDisplay').innerText = `Paparan untuk: ${dateVal} (${dayName})`;
-        }
+        // --- 4. RENDER COURT GRID ---
+        function renderCourtGrid() {
+            const container = document.getElementById("visualCourtGrid");
+            const selectedDate = document.getElementById("bookingDate").value;
+            container.innerHTML = "";
 
-        function togglePaymentQR() {
-            const method = document.getElementById('paymentMethod').value;
-            const img = document.getElementById('merchantQrImg');
-            const bankName = document.getElementById('displayBankName');
-            const accName = document.getElementById('displayAccName');
-            const accNo = document.getElementById('displayAccNo');
-            const qrTitle = document.getElementById('qrTitle');
+            COURTS_DATA.forEach((court, idx) => {
+                const courtNum = idx + 1;
+                const isActive = settings[`court${courtNum}Active`];
 
-            if(method === 'duitnow') {
-                qrTitle.innerText = "Imbas Kod DuitNow QR / Bank Transfer";
-                img.src = settings.qr.duitnowImg;
-                bankName.innerText = settings.qr.bankName;
-                accName.innerText = settings.qr.accName;
-                accNo.innerText = settings.qr.accNo;
-            } else {
-                qrTitle.innerText = "Imbas Kod QR Touch 'n Go eWallet";
-                img.src = settings.qr.tngImg;
-                bankName.innerText = "Touch 'n Go eWallet";
-                accName.innerText = settings.qr.tngName;
-                accNo.innerText = settings.qr.tngNo;
-            }
-        }
+                const courtCard = document.createElement("div");
+                courtCard.className = `p-3 rounded-2xl border ${isActive ? 'bg-slate-900 border-slate-800 shadow-md' : 'bg-slate-900/40 border-slate-900 opacity-40'}`;
 
-        function renderVisualCourts() {
-            const container = document.getElementById('visualCourtGrid');
-            container.innerHTML = '';
-            const currentDate = document.getElementById('bookingDate').value;
-
-            COURTS_DATA.forEach(court => {
-                const isActive = settings.activeCourts[court.id];
-                const card = document.createElement('div');
-                card.className = `p-3.5 rounded-xl border transition-all ${isActive ? 'bg-slate-800 border-slate-700' : 'bg-slate-800/40 border-slate-800 opacity-50'}`;
-                
-                let courtHtml = `
-                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-700/80">
-                        <span class="font-bold text-sm text-white flex items-center gap-1.5">
-                            <span class="w-2 h-2 rounded-full ${isActive ? 'bg-emerald-400' : 'bg-rose-500'}"></span>
-                            ${court.name}
-                        </span>
-                        <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded ${isActive ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-rose-950 text-rose-300 border border-rose-800'}">
-                            ${isActive ? 'Aktif' : 'Tutup'}
-                        </span>
+                let html = `
+                    <div class="flex justify-between items-center mb-2.5 pb-2 border-b border-slate-800">
+                        <h3 class="font-extrabold text-xs text-amber-400 flex items-center gap-1.5">
+                            <span>🎾</span> ${court.name}
+                        </h3>
+                        ${!isActive ? '<span class="text-[9px] bg-rose-950 text-rose-300 px-2 py-0.5 rounded-full font-bold">Tutup</span>' : ''}
                     </div>
+                    <div class="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto no-scrollbar">
                 `;
 
-                if(!isActive) {
-                    courtHtml += `<p class="text-xs text-slate-400 italic py-4 text-center">Gelanggang tidak beroperasi.</p>`;
-                } else {
-                    courtHtml += `<div class="grid grid-cols-2 gap-1.5 text-xs">`;
-                    
-                    ALL_SLOTS.forEach(slot => {
-                        const existing = bookings.find(b => 
-                            b.date === currentDate && 
-                            b.status !== 'Ditolak' &&
-                            b.slots && b.slots.some(s => s.courtId === court.id && s.startHour === slot.startHour)
-                        );
+                ALL_SLOTS.forEach(slot => {
+                    if (!isActive) {
+                        html += `<button disabled class="p-2 text-xs rounded-xl bg-slate-950 text-slate-700 border border-slate-900 cursor-not-allowed text-left">${slot.displayTime}</button>`;
+                        return;
+                    }
 
-                        const isSelected = selectedCourtSlots.some(s => s.courtId === court.id && s.startHour === slot.startHour);
+                    const slotStatus = getSlotStatus(selectedDate, court.id, slot.startHour);
+                    const isSelected = selectedSlots.some(s => s.courtId === court.id && s.startHour === slot.startHour);
 
-                        let btnClass = "";
-                        let statusAttr = "";
-                        let statusText = slot.displayTime;
+                    let btnClass = "";
+                    let disabledAttr = "";
+                    let badgeStatus = "";
 
-                        if(existing) {
-                            if(existing.status === 'Diluluskan') {
-                                btnClass = "bg-rose-900/60 border-rose-700 text-rose-200 cursor-not-allowed line-through";
-                                statusAttr = "disabled";
-                            } else {
-                                btnClass = "bg-amber-900/60 border-amber-700 text-amber-200 cursor-not-allowed";
-                                statusAttr = "disabled";
-                            }
-                        } else if(isSelected) {
-                            btnClass = "bg-blue-600 border-blue-400 text-white font-bold shadow-sm ring-1 ring-blue-300";
-                        } else {
-                            btnClass = slot.type === 'peak' 
-                                ? "bg-slate-700/80 border-slate-600 hover:bg-emerald-600 hover:border-emerald-500 text-slate-100" 
-                                : "bg-slate-700/50 border-slate-600/70 hover:bg-emerald-600 hover:border-emerald-500 text-slate-200";
-                        }
+                    if (slotStatus === "Diluluskan") {
+                        btnClass = "bg-rose-950/40 border-rose-900/40 text-rose-400/60 cursor-not-allowed";
+                        disabledAttr = "disabled";
+                        badgeStatus = "🔴 Ditempah";
+                    } else if (slotStatus === "Menunggu Kelulusan") {
+                        btnClass = "bg-amber-950/40 border-amber-900/40 text-amber-300/60 cursor-not-allowed";
+                        disabledAttr = "disabled";
+                        badgeStatus = "⏳ Process";
+                    } else if (isSelected) {
+                        btnClass = "bg-amber-500 border-amber-400 text-slate-950 font-black shadow-lg shadow-amber-500/20";
+                        badgeStatus = "✓ Dipilih";
+                    } else {
+                        btnClass = "bg-slate-950 hover:bg-slate-800 border-slate-800 text-slate-200 active:scale-95";
+                        badgeStatus = slot.type === 'peak' ? '🔥 Peak' : '🌿 Off-Peak';
+                    }
 
-                        courtHtml += `
-                            <button ${statusAttr} onclick="toggleSlotSelect('${court.id}', ${slot.startHour})" 
-                                class="p-2 rounded-lg border text-center text-xs font-medium transition duration-150 flex flex-col items-center justify-center gap-0.5 ${btnClass}">
-                                <span>${statusText}</span>
-                                <span class="text-[9px] opacity-75">${slot.type === 'peak' ? 'Peak' : 'Off-Peak'}</span>
-                            </button>
-                        `;
-                    });
+                    html += `
+                        <button type="button" ${disabledAttr} onclick="toggleSlotSelect('${court.id}', '${court.name}', ${slot.startHour}, '${slot.displayTime}', '${slot.type}')" 
+                            class="p-2 text-xs rounded-xl border transition-all duration-150 text-left flex flex-col justify-between h-13 ${btnClass}">
+                            <span class="font-bold">${slot.displayTime}</span>
+                            <span class="text-[9px] font-semibold opacity-90">${badgeStatus}</span>
+                        </button>
+                    `;
+                });
 
-                    courtHtml += `</div>`;
-                }
-
-                card.innerHTML = courtHtml;
-                container.appendChild(card);
+                html += `</div>`;
+                courtCard.innerHTML = html;
+                container.appendChild(courtCard);
             });
-
-            updateSelectedSlotsText();
         }
 
-        function toggleSlotSelect(courtId, startHour) {
-            const index = selectedCourtSlots.findIndex(s => s.courtId === courtId && s.startHour === startHour);
-            if(index > -1) {
-                selectedCourtSlots.splice(index, 1);
-            } else {
-                selectedCourtSlots.push({ courtId, startHour });
+        function getSlotStatus(date, courtId, startHour) {
+            for (let ref in allBookings) {
+                const b = allBookings[ref];
+                if (b.bookingDate === date && b.status !== "Ditolak") {
+                    if (b.slots && Array.isArray(b.slots)) {
+                        const match = b.slots.find(s => s.courtId === courtId && s.startHour === startHour);
+                        if (match) return b.status || "Diluluskan";
+                    }
+                }
             }
-            renderVisualCourts();
+            return null;
+        }
+
+        function toggleSlotSelect(courtId, courtName, startHour, displayTime, type) {
+            const index = selectedSlots.findIndex(s => s.courtId === courtId && s.startHour === startHour);
+            if (index > -1) {
+                selectedSlots.splice(index, 1);
+            } else {
+                selectedSlots.push({ courtId, courtName, startHour, displayTime, type });
+            }
+            renderCourtGrid();
             calculateTotal();
         }
 
-        function updateSelectedSlotsText() {
-            const container = document.getElementById('selectedCourtTimeText');
-            const durationBadge = document.getElementById('durationBadge');
-            
-            durationBadge.innerText = `${selectedCourtSlots.length} Slot Jam`;
-
-            if(selectedCourtSlots.length === 0) {
-                container.innerHTML = `Sila klik mana-mana slot di atas untuk memilih gelanggang & masa.`;
-                return;
-            }
-
-            const grouped = {};
-            selectedCourtSlots.forEach(s => {
-                if(!grouped[s.courtId]) grouped[s.courtId] = [];
-                grouped[s.courtId].push(s.startHour);
-            });
-
-            let html = '<ul class="space-y-1">';
-            for(let courtId in grouped) {
-                const courtName = COURTS_DATA.find(c => c.id === courtId).name;
-                const hours = grouped[courtId].sort((a,b) => a - b);
-                const formattedTimes = hours.map(h => `${TIME_LABEL_MAP[h]} - ${TIME_LABEL_MAP[h+1]}`).join(', ');
-                html += `<li><strong class="text-blue-900">${courtName}:</strong> ${formattedTimes}</li>`;
-            }
-            html += '</ul>';
-            container.innerHTML = html;
-        }
-
-        function adjustQty(id, change) {
+        // --- 5. LOGIK KIRAAN & ADD-ONS ---
+        function adjustQty(id, delta) {
             const input = document.getElementById(id);
             let val = parseInt(input.value) || 0;
-            val += change;
-            if(val < 0) val = 0;
+            val += delta;
+            if (val < 0) val = 0;
             input.value = val;
             calculateTotal();
         }
 
         function calculateTotal() {
-            let courtTotal = 0;
-            let offPeakCount = 0;
+            let totalCourt = 0;
+            let offpeakCount = 0;
             let peakCount = 0;
 
-            selectedCourtSlots.forEach(s => {
-                const slotObj = ALL_SLOTS.find(item => item.startHour === s.startHour);
-                if(slotObj) {
-                    if(slotObj.type === 'peak') {
-                        courtTotal += parseFloat(settings.peakPrice);
-                        peakCount++;
-                    } else {
-                        courtTotal += parseFloat(settings.offPeakPrice);
-                        offPeakCount++;
-                    }
+            selectedSlots.forEach(s => {
+                if (s.type === 'peak') {
+                    totalCourt += parseFloat(settings.peakPrice);
+                    peakCount++;
+                } else {
+                    totalCourt += parseFloat(settings.offpeakPrice);
+                    offpeakCount++;
                 }
             });
 
-            const paddleQty = parseInt(document.getElementById('paddleQty').value) || 0;
-            const ballStdQty = parseInt(document.getElementById('ballStdQty').value) || 0;
-            const ballPremQty = parseInt(document.getElementById('ballPremQty').value) || 0;
+            const slotTextDiv = document.getElementById("selectedCourtTimeText");
+            document.getElementById("durationBadge").innerText = `${selectedSlots.length} Jam Dipilih`;
 
-            const paddleTotal = paddleQty * parseFloat(settings.paddlePrice);
-            const ballStdTotal = ballStdQty * parseFloat(settings.ballStdPrice);
-            const ballPremTotal = ballPremQty * parseFloat(settings.ballPremPrice);
+            if (selectedSlots.length === 0) {
+                slotTextDiv.innerHTML = `<span class="text-slate-500 italic">Sila pilih slot di atas...</span>`;
+            } else {
+                let grouped = {};
+                selectedSlots.forEach(s => {
+                    if (!grouped[s.courtName]) grouped[s.courtName] = [];
+                    grouped[s.courtName].push(s.displayTime);
+                });
 
-            const grandTotal = courtTotal + paddleTotal + ballStdTotal + ballPremTotal;
+                let summaryHtml = "";
+                for (let cName in grouped) {
+                    summaryHtml += `<div class="mb-1"><b class="text-amber-400">${cName}:</b> ${grouped[cName].join(", ")}</div>`;
+                }
+                slotTextDiv.innerHTML = summaryHtml;
+            }
 
-            document.getElementById('courtPriceDisplay').innerText = `RM ${courtTotal.toFixed(2)}`;
-            document.getElementById('hoursBreakdownDisplay').innerText = `${offPeakCount}h Off-Peak (RM${settings.offPeakPrice}), ${peakCount}h Peak (RM${settings.peakPrice})`;
-            document.getElementById('paddlePriceDisplay').innerText = `RM ${paddleTotal.toFixed(2)}`;
-            document.getElementById('ballStdPriceDisplay').innerText = `RM ${ballStdTotal.toFixed(2)}`;
-            document.getElementById('ballPremPriceDisplay').innerText = `RM ${ballPremTotal.toFixed(2)}`;
-            document.getElementById('totalPriceDisplay').innerText = `RM ${grandTotal.toFixed(2)}`;
-            document.getElementById('qrAmountDisplay').innerText = `RM ${grandTotal.toFixed(2)}`;
+            const paddleQty = parseInt(document.getElementById("paddleQty").value) || 0;
+            const ballStdQty = parseInt(document.getElementById("ballStdQty").value) || 0;
+            const ballPremQty = parseInt(document.getElementById("ballPremQty").value) || 0;
+
+            const totalPaddle = paddleQty * parseFloat(settings.paddlePrice);
+            const totalBallStd = ballStdQty * parseFloat(settings.ballStdPrice);
+            const totalBallPrem = ballPremQty * parseFloat(settings.ballPremPrice);
+
+            const grandTotal = totalCourt + totalPaddle + totalBallStd + totalBallPrem;
+
+            document.getElementById("courtPriceDisplay").innerText = `RM ${totalCourt.toFixed(2)}`;
+            document.getElementById("hoursBreakdownDisplay").innerText = `(${offpeakCount}j Off-Peak @ RM${settings.offpeakPrice}, ${peakCount}j Peak @ RM${settings.peakPrice})`;
+            document.getElementById("paddlePriceDisplay").innerText = `RM ${totalPaddle.toFixed(2)}`;
+            document.getElementById("ballStdPriceDisplay").innerText = `RM ${totalBallStd.toFixed(2)}`;
+            document.getElementById("ballPremPriceDisplay").innerText = `RM ${totalBallPrem.toFixed(2)}`;
+            document.getElementById("totalPriceDisplay").innerText = `RM ${grandTotal.toFixed(2)}`;
+            document.getElementById("qrAmountDisplay").innerText = `RM ${grandTotal.toFixed(2)}`;
 
             return grandTotal;
         }
 
+        function togglePaymentQR() {
+            const method = document.getElementById("paymentMethod").value;
+            const qrTitle = document.getElementById("qrTitle");
+            const qrImg = document.getElementById("merchantQrImg");
+            const bankName = document.getElementById("displayBankName");
+            const accName = document.getElementById("displayAccName");
+            const accNo = document.getElementById("displayAccNo");
+
+            if (method === "tng") {
+                qrTitle.innerText = "Imbas QR Touch 'n Go eWallet";
+                qrImg.src = settings.tngQrImg || "qr-tng.png";
+                bankName.innerText = "Touch 'n Go eWallet";
+                accName.innerText = settings.tngAccName || "-";
+                accNo.innerText = settings.tngAccNo || "-";
+            } else {
+                qrTitle.innerText = "Imbas Kod QR DuitNow";
+                qrImg.src = settings.duitNowQrImg || "qr-duitnow.png";
+                bankName.innerText = settings.bankName || "Maybank";
+                accName.innerText = settings.bankAccName || "-";
+                accNo.innerText = settings.bankAccNo || "-";
+            }
+        }
+
+        // --- 6. HANTAR TEMPAHAN & RESIT ---
         function generateReceipt() {
-            const custName = document.getElementById('custName').value.trim();
-            const custPhone = document.getElementById('custPhone').value.trim();
-            const bookingDate = document.getElementById('bookingDate').value;
-            const bookingDay = document.getElementById('bookingDay').value;
-            const proofInput = document.getElementById('paymentProof');
+            const name = document.getElementById("custName").value.trim();
+            const phone = document.getElementById("custPhone").value.trim();
+            const date = document.getElementById("bookingDate").value;
+            const day = document.getElementById("bookingDay").value;
+            const proofFile = document.getElementById("paymentProof").files[0];
+            const totalAmount = calculateTotal();
 
-            if(!custName || !custPhone) {
-                alert("Sila isi Nama Pelanggan dan Nombor WhatsApp.");
+            if (!name || !phone) {
+                alert("Sila lengkapkan Nama dan Nombor WhatsApp anda.");
+                return;
+            }
+            if (selectedSlots.length === 0) {
+                alert("Sila pilih sekurang-kurangnya 1 slot masa.");
+                return;
+            }
+            if (!proofFile) {
+                alert("Sila muat naik bukti resit bayaran.");
                 return;
             }
 
-            if(selectedCourtSlots.length === 0) {
-                alert("Sila pilih sekurang-kurangnya satu slot gelanggang dan masa.");
-                return;
-            }
+            saveCustomerInfoLocally(name, phone);
 
-            if(proofInput.files.length === 0) {
-                alert("Sila muat naik bukti resit pembayaran terlebih dahulu.");
-                return;
-            }
+            const timestamp = Date.now().toString().slice(-5);
+            const randomLetter = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+            currentGeneratedRef = `EM6-${randomLetter}${timestamp}`;
 
-            const grandTotal = calculateTotal();
-            const refNo = "EM6-" + Math.floor(100000 + Math.random() * 900000);
-            currentBookingRef = refNo;
-
-            const method = document.getElementById('paymentMethod').value;
-            const methodLabel = method === 'duitnow' ? "DuitNow QR / Bank Transfer" : "Touch 'n Go eWallet";
-
-            const newBooking = {
-                refId: refNo,
-                custName: custName,
-                custPhone: custPhone,
-                date: bookingDate,
-                day: bookingDay,
-                slots: [...selectedCourtSlots],
-                paddleQty: parseInt(document.getElementById('paddleQty').value) || 0,
-                ballStdQty: parseInt(document.getElementById('ballStdQty').value) || 0,
-                ballPremQty: parseInt(document.getElementById('ballPremQty').value) || 0,
-                totalAmount: grandTotal,
-                paymentMethod: methodLabel,
+            const bookingData = {
+                refId: currentGeneratedRef,
+                custName: name,
+                custPhone: phone,
+                bookingDate: date,
+                bookingDay: day,
+                slots: selectedSlots,
+                paddleQty: parseInt(document.getElementById("paddleQty").value) || 0,
+                ballStdQty: parseInt(document.getElementById("ballStdQty").value) || 0,
+                ballPremQty: parseInt(document.getElementById("ballPremQty").value) || 0,
+                totalAmount: totalAmount,
+                paymentMethod: document.getElementById("paymentMethod").value === "tng" ? "Touch 'n Go eWallet" : "DuitNow QR",
                 status: "Menunggu Kelulusan",
-                timestamp: new Date().toISOString()
+                createdDate: new Date().toISOString()
             };
 
-            // SIMPAN TEMPAHAN
-            bookings.push(newBooking);
-            syncDataToStorage();
+            if (isFirebaseConnected && db) {
+                db.ref("bookings/" + currentGeneratedRef).set(bookingData)
+                .then(() => displayReceiptUI(bookingData))
+                .catch(err => alert("Gagal menyimpan: " + err.message));
+            } else {
+                allBookings[currentGeneratedRef] = bookingData;
+                displayReceiptUI(bookingData);
+            }
+        }
 
-            document.getElementById('refNo').innerText = `Ref No: ${refNo}`;
-            document.getElementById('payMethodDisplay').innerText = `Kaedah: ${methodLabel}`;
+        function displayReceiptUI(data) {
+            const receiptDiv = document.getElementById("receiptSection");
+            receiptDiv.classList.remove("hidden");
+            document.getElementById("refNo").innerText = `Ref ID: ${data.refId}`;
+            document.getElementById("payMethodDisplay").innerText = `Kaedah: ${data.paymentMethod}`;
 
-            const qrcodeDiv = document.getElementById('qrcode');
-            qrcodeDiv.innerHTML = "";
-            qrCodeInstance = new QRCode(qrcodeDiv, {
-                text: `REF:${refNo}|NAME:${custName}|TOTAL:${grandTotal.toFixed(2)}`,
-                width: 128,
-                height: 128
+            const qrContainer = document.getElementById("qrcode");
+            qrContainer.innerHTML = "";
+            new QRCode(qrContainer, {
+                text: `EM6|${data.refId}|${data.custName}|RM${data.totalAmount}`,
+                width: 120,
+                height: 120
             });
 
-            document.getElementById('receiptSection').classList.remove('hidden');
-            document.getElementById('receiptSection').scrollIntoView({ behavior: 'smooth' });
-            
-            alert("Tempahan berjaya dihantar! Sila tekan butang WhatsApp di bawah untuk mengesahkan tempahan.");
+            receiptDiv.scrollIntoView({ behavior: 'smooth' });
         }
 
         function sendToWhatsappOwner() {
-            if(!currentBookingRef) return;
-            const b = bookings.find(item => item.refId === currentBookingRef);
-            if(!b) return;
-
-            let slotText = "";
-            const grouped = {};
-            b.slots.forEach(s => {
-                if(!grouped[s.courtId]) grouped[s.courtId] = [];
-                grouped[s.courtId].push(s.startHour);
-            });
-
-            for(let courtId in grouped) {
-                const courtName = COURTS_DATA.find(c => c.id === courtId).name;
-                const hours = grouped[courtId].sort((a,b) => a - b);
-                const formattedTimes = hours.map(h => `${TIME_LABEL_MAP[h]}-${TIME_LABEL_MAP[h+1]}`).join(', ');
-                slotText += `\n  - ${courtName}: ${formattedTimes}`;
+            if (!currentGeneratedRef || !allBookings[currentGeneratedRef]) {
+                alert("Tiada tempahan ditemui.");
+                return;
             }
 
-            let msg = `*PENGESAHAN RESIT TEMPAHAN - EM6 ARENA*\n\n`;
-            msg += `*Ref ID:* ${b.refId}\n`;
-            msg += `*Nama:* ${b.custName}\n`;
-            msg += `*No. Tel:* ${b.custPhone}\n`;
-            msg += `*Tarikh:* ${b.date} (${b.day})\n`;
-            msg += `*Gelanggang & Slot:*${slotText}\n\n`;
-            msg += `*Add-ons:*\n`;
-            msg += `  - Paddle: ${b.paddleQty} set\n`;
-            msg += `  - Bola Standard: ${b.ballStdQty} pc\n`;
-            msg += `  - Bola Premium: ${b.ballPremQty} pc\n\n`;
-            msg += `*Jumlah Bayaran:* RM ${b.totalAmount.toFixed(2)}\n`;
-            msg += `*Kaedah Bayaran:* ${b.paymentMethod}\n`;
-            msg += `*Status:* Menunggu Kelulusan Owner\n\n`;
-            msg += `_Saya telah muat naik resit pembayaran. Mohon sahkan tempahan saya. Terima kasih!_`;
+            const b = allBookings[currentGeneratedRef];
+            let slotText = "";
+            b.slots.forEach(s => {
+                slotText += `\n  • ${s.courtName}: ${s.displayTime}`;
+            });
 
-            const encodedMsg = encodeURIComponent(msg);
-            window.open(`https://wa.me/${OWNER_WHATSAPP}?text=${encodedMsg}`, '_blank');
+            const msg = `Salam Owner EM6 Pickleball, saya nak sahkan tempahan:\n\n` +
+                        `🔖 *Ref ID:* ${b.refId}\n` +
+                        `👤 *Nama:* ${b.custName}\n` +
+                        `📱 *WhatsApp:* ${b.custPhone}\n` +
+                        `📅 *Tarikh:* ${b.bookingDate} (${b.bookingDay})\n` +
+                        `🎾 *Gelanggang & Masa:*${slotText}\n` +
+                        `🏓 *Add-ons:* Paddle (${b.paddleQty}), Bola Std (${b.ballStdQty}), Bola Prem (${b.ballPremQty})\n` +
+                        `💰 *Jumlah:* RM ${parseFloat(b.totalAmount).toFixed(2)}\n\n` +
+                        `*Saya lampirkan resit bayaran di bawah. Terima kasih!*`;
+
+            window.open(`https://wa.me/${OWNER_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
         }
 
-        // FUNGSI PANEL OWNER / ADMIN
+        // --- 7. OWNER DASHBOARD & SETTINGS ---
         function openAdminModal() {
-            const pin = prompt("Masukkan PIN Owner (Default: 1234):");
-            if(pin === settings.pin) {
-                document.getElementById('adminModal').classList.remove('hidden');
-                renderAdminBookings();
-            } else if(pin !== null) {
+            const pin = prompt("Masukkan PIN Owner:");
+            if (pin === settings.ownerPin) {
+                document.getElementById("adminModal").classList.remove("hidden");
+                switchTab('laporan');
+            } else if (pin !== null) {
                 alert("PIN Salah!");
             }
         }
 
         function closeAdminModal() {
-            document.getElementById('adminModal').classList.add('hidden');
+            document.getElementById("adminModal").classList.add("hidden");
         }
 
         function switchTab(tabName) {
-            ['laporan', 'harga', 'qr', 'court', 'security'].forEach(t => {
-                const tabEl = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
-                const btnEl = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn');
-                if(t === tabName) {
-                    tabEl.classList.remove('hidden');
-                    btnEl.className = "py-2 px-3 font-semibold border-b-2 border-blue-600 text-blue-600";
-                } else {
-                    tabEl.classList.add('hidden');
-                    btnEl.className = "py-2 px-3 font-semibold text-gray-500 border-b-2 border-transparent hover:text-blue-600";
-                }
+            ['laporan', 'harga', 'qr', 'court'].forEach(t => {
+                const tabEl = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+                const btnEl = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}Btn`);
+                if (tabEl) tabEl.classList.toggle("hidden", t !== tabName);
+                if (btnEl) btnEl.className = t === tabName ? "py-2.5 px-3 font-bold border-b-2 border-amber-500 text-amber-500" : "py-2.5 px-3 text-slate-400 hover:text-white";
             });
         }
 
-        function renderAdminBookings(filterText = "") {
-            const tableBody = document.getElementById('bookingHistoryTable');
-            tableBody.innerHTML = "";
-            
-            let totalRev = 0;
-            let count = 0;
+        function renderBookingTable() {
+            const tbody = document.getElementById("bookingHistoryTable");
+            tbody.innerHTML = "";
+            let totalRev = 0, count = 0;
 
-            const filtered = bookings.filter(b => {
-                const search = filterText.toLowerCase();
-                return b.custName.toLowerCase().includes(search) || 
-                       b.refId.toLowerCase().includes(search) || 
-                       b.date.toLowerCase().includes(search);
-            });
-
-            filtered.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-            filtered.forEach(b => {
-                if(b.status === 'Diluluskan') {
-                    totalRev += b.totalAmount;
-                }
+            Object.keys(allBookings).sort((a,b) => new Date(allBookings[b].createdDate || 0) - new Date(allBookings[a].createdDate || 0))
+            .forEach(refId => {
+                const b = allBookings[refId];
                 count++;
+                if (b.status === "Diluluskan") totalRev += parseFloat(b.totalAmount || 0);
 
-                let slotDetails = b.slots ? b.slots.map(s => {
-                    const cName = COURTS_DATA.find(c => c.id === s.courtId).name.split(' ')[0];
-                    return `${cName} (${TIME_LABEL_MAP[s.startHour]})`;
-                }).join(', ') : '-';
+                let statusBadge = b.status === "Diluluskan" ? `<span class="bg-emerald-950 text-emerald-400 border border-emerald-800 px-1.5 py-0.5 rounded text-[9px] font-bold">Lulus</span>` :
+                                  b.status === "Ditolak" ? `<span class="bg-rose-950 text-rose-400 border border-rose-800 px-1.5 py-0.5 rounded text-[9px] font-bold">Tolak</span>` :
+                                  `<span class="bg-amber-950 text-amber-400 border border-amber-800 px-1.5 py-0.5 rounded text-[9px] font-bold">Wait</span>`;
 
-                let statusBadge = "";
-                if(b.status === 'Diluluskan') statusBadge = `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">Diluluskan</span>`;
-                else if(b.status === 'Ditolak') statusBadge = `<span class="bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-bold">Ditolak</span>`;
-                else statusBadge = `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">Menunggu</span>`;
-
-                const tr = document.createElement('tr');
-                tr.className = "border-b hover:bg-gray-100";
+                const tr = document.createElement("tr");
+                tr.className = "border-b border-slate-800 hover:bg-slate-800/50";
                 tr.innerHTML = `
-                    <td class="p-2 font-mono font-bold">${b.refId}</td>
-                    <td class="p-2">${b.date}<br><span class="text-gray-400">${b.day}</span></td>
-                    <td class="p-2 font-medium">${b.custName}<br><span class="text-blue-600">${b.custPhone}</span></td>
-                    <td class="p-2 text-[11px]">${slotDetails}</td>
-                    <td class="p-2 font-bold text-blue-900">RM ${b.totalAmount.toFixed(2)}</td>
+                    <td class="p-2 font-mono font-bold text-[10px] text-amber-400">${b.refId}</td>
+                    <td class="p-2 text-[10px]"><b>${b.custName}</b><br><span class="text-slate-500">${b.custPhone}</span></td>
+                    <td class="p-2 font-bold text-[10px]">RM${parseFloat(b.totalAmount).toFixed(2)}</td>
                     <td class="p-2 text-center">${statusBadge}</td>
-                    <td class="p-2 text-center space-x-1 whitespace-nowrap">
-                        <button onclick="approveBooking('${b.refId}')" class="bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-700">Approve</button>
-                        <button onclick="rejectBooking('${b.refId}')" class="bg-rose-600 text-white px-2 py-1 rounded hover:bg-rose-700">Reject</button>
-                        <button onclick="openEditModal('${b.refId}')" class="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700">Edit</button>
+                    <td class="p-2 text-center space-x-1">
+                        <button onclick="updateBookingStatus('${b.refId}', 'Diluluskan')" class="bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">✓</button>
+                        <button onclick="updateBookingStatus('${b.refId}', 'Ditolak')" class="bg-rose-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">✕</button>
                     </td>
                 `;
-                tableBody.appendChild(tr);
+                tbody.appendChild(tr);
             });
 
-            document.getElementById('totalRevenue').innerText = `RM ${totalRev.toFixed(2)}`;
-            document.getElementById('bookingCount').innerText = count;
+            document.getElementById("totalRevenue").innerText = `RM ${totalRev.toFixed(2)}`;
+            document.getElementById("bookingCount").innerText = count;
         }
 
-        function filterBookings() {
-            const query = document.getElementById('searchBookingInput').value;
-            renderAdminBookings(query);
-        }
-
-        function approveBooking(refId) {
-            const index = bookings.findIndex(b => b.refId === refId);
-            if(index > -1) {
-                bookings[index].status = 'Diluluskan';
-                syncDataToStorage();
-                renderAdminBookings();
-                renderVisualCourts();
-                alert(`Tempahan ${refId} telah DILULUSKAN.`);
-            }
-        }
-
-        function rejectBooking(refId) {
-            const index = bookings.findIndex(b => b.refId === refId);
-            if(index > -1) {
-                bookings[index].status = 'Ditolak';
-                syncDataToStorage();
-                renderAdminBookings();
-                renderVisualCourts();
-                alert(`Tempahan ${refId} telah DITOLAK.`);
-            }
-        }
-
-        function clearHistory() {
-            if(confirm("Adakah anda pasti mahu memadam semua sejarah tempahan?")) {
-                bookings = [];
-                syncDataToStorage();
-                renderAdminBookings();
-                renderVisualCourts();
-            }
-        }
-
-        function saveAdminSettings() {
-            settings.offPeakPrice = parseFloat(document.getElementById('settingOffPeak').value) || 30;
-            settings.peakPrice = parseFloat(document.getElementById('settingPeak').value) || 40;
-            settings.paddlePrice = parseFloat(document.getElementById('settingPaddle').value) || 5;
-            settings.ballStdPrice = parseFloat(document.getElementById('settingBallStd').value) || 5;
-            settings.ballPremPrice = parseFloat(document.getElementById('settingBallPrem').value) || 19;
-            
-            syncDataToStorage();
-            alert("Tetapan harga telah berjaya disimpan!");
-        }
-
-        function saveQrSettings() {
-            settings.qr.bankName = document.getElementById('settingBankName').value;
-            settings.qr.accNo = document.getElementById('settingBankAccNo').value;
-            settings.qr.accName = document.getElementById('settingBankAccName').value;
-            settings.qr.duitnowImg = document.getElementById('settingDuitNowQr').value;
-
-            settings.qr.tngNo = document.getElementById('settingTngAccNo').value;
-            settings.qr.tngName = document.getElementById('settingTngAccName').value;
-            settings.qr.tngImg = document.getElementById('settingTngQr').value;
-
-            syncDataToStorage();
-            togglePaymentQR();
-            alert("Maklumat akaun bank & QR telah berjaya disimpan!");
-        }
-
-        function saveCourtSettings() {
-            settings.activeCourts.court1 = document.getElementById('court1Active').checked;
-            settings.activeCourts.court2 = document.getElementById('court2Active').checked;
-            settings.activeCourts.court3 = document.getElementById('court3Active').checked;
-
-            syncDataToStorage();
-            renderVisualCourts();
-            alert("Status gelanggang telah dikemaskini!");
-        }
-
-        function updatePin() {
-            const newPin = document.getElementById('newPinInput').value.trim();
-            if(newPin.length >= 4) {
-                settings.pin = newPin;
-                syncDataToStorage();
-                document.getElementById('newPinInput').value = "";
-                alert("PIN Owner baru telah BERJAYA disimpan!");
+        function updateBookingStatus(refId, newStatus) {
+            if (isFirebaseConnected && db) {
+                db.ref(`bookings/${refId}/status`).set(newStatus);
             } else {
-                alert("Sila masukkan sekurang-kurangnya 4 digit PIN.");
+                if (allBookings[refId]) {
+                    allBookings[refId].status = newStatus;
+                    renderCourtGrid();
+                    renderBookingTable();
+                }
             }
         }
 
-        // FUNGSI EDIT MODAL
-        function openEditModal(refId) {
-            const b = bookings.find(item => item.refId === refId);
-            if(!b) return;
+        function initPriceInputs() {
+            document.getElementById("settingOffPeak").value = settings.offpeakPrice;
+            document.getElementById("settingPeak").value = settings.peakPrice;
+            document.getElementById("settingPaddle").value = settings.paddlePrice;
+            document.getElementById("settingBallStd").value = settings.ballStdPrice;
+            document.getElementById("settingBallPrem").value = settings.ballPremPrice;
 
-            document.getElementById('editRefId').value = b.refId;
-            document.getElementById('editCustName').value = b.custName;
-            document.getElementById('editCustPhone').value = b.custPhone;
-            document.getElementById('editDate').value = b.date;
-            document.getElementById('editAmount').value = b.totalAmount;
-            document.getElementById('editStatus').value = b.status;
+            document.getElementById("labelPaddle").innerText = parseFloat(settings.paddlePrice).toFixed(2);
+            document.getElementById("labelBallStd").innerText = parseFloat(settings.ballStdPrice).toFixed(2);
+            document.getElementById("labelBallPrem").innerText = parseFloat(settings.ballPremPrice).toFixed(2);
 
-            document.getElementById('editBookingModal').classList.remove('hidden');
+            document.getElementById("settingBankName").value = settings.bankName || "";
+            document.getElementById("settingBankAccNo").value = settings.bankAccNo || "";
+            document.getElementById("settingBankAccName").value = settings.bankAccName || "";
+            document.getElementById("settingDuitNowQr").value = settings.duitNowQrImg || "";
+
+            document.getElementById("settingTngAccNo").value = settings.tngAccNo || "";
+            document.getElementById("settingTngAccName").value = settings.tngAccName || "";
+            document.getElementById("settingTngQr").value = settings.tngQrImg || "";
+
+            document.getElementById("court1Active").checked = settings.court1Active;
+            document.getElementById("court2Active").checked = settings.court2Active;
+            document.getElementById("court3Active").checked = settings.court3Active;
         }
 
-        function closeEditModal() {
-            document.getElementById('editBookingModal').classList.add('hidden');
-        }
+        function saveSettings() {
+            settings.offpeakPrice = parseFloat(document.getElementById("settingOffPeak").value) || 0;
+            settings.peakPrice = parseFloat(document.getElementById("settingPeak").value) || 0;
+            settings.paddlePrice = parseFloat(document.getElementById("settingPaddle").value) || 0;
+            settings.ballStdPrice = parseFloat(document.getElementById("settingBallStd").value) || 0;
+            settings.ballPremPrice = parseFloat(document.getElementById("settingBallPrem").value) || 0;
 
-        function saveEditBooking() {
-            const refId = document.getElementById('editRefId').value;
-            const index = bookings.findIndex(item => item.refId === refId);
-            if(index > -1) {
-                bookings[index].custName = document.getElementById('editCustName').value.trim();
-                bookings[index].custPhone = document.getElementById('editCustPhone').value.trim();
-                bookings[index].date = document.getElementById('editDate').value;
-                bookings[index].totalAmount = parseFloat(document.getElementById('editAmount').value) || bookings[index].totalAmount;
-                bookings[index].status = document.getElementById('editStatus').value;
+            settings.bankName = document.getElementById("settingBankName").value;
+            settings.bankAccNo = document.getElementById("settingBankAccNo").value;
+            settings.bankAccName = document.getElementById("settingBankAccName").value;
+            settings.duitNowQrImg = document.getElementById("settingDuitNowQr").value;
 
-                syncDataToStorage();
-                renderAdminBookings();
-                renderVisualCourts();
-                closeEditModal();
-                alert("Maklumat tempahan berjaya dikemaskini.");
+            settings.tngAccNo = document.getElementById("settingTngAccNo").value;
+            settings.tngAccName = document.getElementById("settingTngAccName").value;
+            settings.tngQrImg = document.getElementById("settingTngQr").value;
+
+            settings.court1Active = document.getElementById("court1Active").checked;
+            settings.court2Active = document.getElementById("court2Active").checked;
+            settings.court3Active = document.getElementById("court3Active").checked;
+
+            if (isFirebaseConnected && db) {
+                db.ref("settings").set(settings)
+                .then(() => alert("Tetapan Berjaya Disimpan!"))
+                .catch(err => alert("Gagal: " + err.message));
+            } else {
+                initPriceInputs();
+                renderCourtGrid();
+                calculateTotal();
+                alert("Tetapan Disimpan (Lokal)");
             }
-        }
-
-        // FUNGSI EXPORT DATA (CSV)
-        function downloadBookingsCSV() {
-            if(bookings.length === 0) {
-                alert("Tiada rekod tempahan untuk dimuat turun.");
-                return;
-            }
-
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Ref ID,Nama,Phone,Tarikh,Hari,Jumlah (RM),Kaedah Bayaran,Status,Masa Tempahan\n";
-
-            bookings.forEach(b => {
-                const row = [
-                    `"${b.refId}"`,
-                    `"${b.custName}"`,
-                    `"${b.custPhone}"`,
-                    `"${b.date}"`,
-                    `"${b.day}"`,
-                    `"${b.totalAmount ? b.totalAmount.toFixed(2) : '0.00'}"`,
-                    `"${b.paymentMethod}"`,
-                    `"${b.status}"`,
-                    `"${b.timestamp}"`
-                ].join(",");
-                csvContent += row + "\n";
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `EM6_Bookings_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            closeAdminModal();
         }
     </script>
 </body>
