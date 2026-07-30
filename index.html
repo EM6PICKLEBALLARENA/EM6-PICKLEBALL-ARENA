@@ -35,7 +35,7 @@
                     <h1 class="text-xl sm:text-2xl font-black text-gray-800 tracking-tight">🏓 EM6 PICKLEBALL ARENA</h1>
                     <p class="text-gray-500 text-xs sm:text-sm flex items-center justify-center sm:justify-start gap-1">
                         <span id="syncStatus" class="inline-block w-2.5 h-2.5 bg-amber-500 rounded-full animate-pulse"></span>
-                        <span id="syncText">Menyambung ke Firebase Database...</span>
+                        <span id="syncText">Menyambung ke Pangkalan Data...</span>
                     </p>
                 </div>
             </div>
@@ -218,9 +218,9 @@
                         <img id="merchantQrImg" src="qr-duitnow.png" alt="Kod QR Pembayaran" class="w-36 h-36 sm:w-40 sm:h-40 mx-auto object-contain bg-white p-2 rounded-xl shadow-sm border">
                         
                         <div class="mt-3 p-2.5 bg-white rounded-lg border border-blue-100 text-left text-xs space-y-1">
-                            <p class="text-gray-500">Bank / Wallet: <b id="displayBankName" class="text-gray-800">-</b></p>
-                            <p class="text-gray-500">Pemegang: <b id="displayAccName" class="text-gray-800">-</b></p>
-                            <p class="text-gray-500">No. Akaun: <b id="displayAccNo" class="text-blue-700 font-mono text-sm break-all">-</b></p>
+                            <p class="text-gray-500">Bank / Wallet: <b id="displayBankName" class="text-gray-800">Maybank</b></p>
+                            <p class="text-gray-500">Pemegang: <b id="displayAccName" class="text-gray-800">MOHD FARIS AFNAN BIN ZAHARI</b></p>
+                            <p class="text-gray-500">No. Akaun: <b id="displayAccNo" class="text-blue-700 font-mono text-sm break-all">153029150514</b></p>
                         </div>
 
                         <p class="text-xs text-gray-600 mt-2.5">Sila jelaskan bayaran sebanyak <b id="qrAmountDisplay" class="text-blue-700 font-extrabold text-sm">RM 0.00</b> dahulu.</p>
@@ -333,7 +333,7 @@
                         <input type="number" id="settingBallPrem" class="w-full p-2.5 border rounded-lg mt-1 text-sm">
                     </div>
                 </div>
-                <button onclick="saveAdminSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Simpan Tetapan Harga Ke Cloud</button>
+                <button onclick="saveAdminSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Simpan Tetapan Harga</button>
             </div>
 
             <!-- Tab 3: Bank/QR -->
@@ -357,7 +357,7 @@
                     <input type="text" id="settingTngQr" placeholder="Fail Gambar QR" class="w-full p-2 border rounded-lg text-xs">
                 </div>
 
-                <button onclick="saveQrSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Simpan Maklumat Akaun Ke Cloud</button>
+                <button onclick="saveQrSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Simpan Maklumat Akaun</button>
             </div>
 
             <!-- Tab 4: Gelanggang -->
@@ -376,7 +376,7 @@
                         <span class="font-medium text-sm text-gray-700">Gelanggang 3 (Court 3)</span>
                     </label>
                 </div>
-                <button onclick="saveCourtSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Kemaskini Status Gelanggang Ke Cloud</button>
+                <button onclick="saveCourtSettings()" class="w-full mt-4 bg-blue-600 text-white font-semibold py-3 rounded-xl hover:bg-blue-700 active:scale-98">Kemaskini Status Gelanggang</button>
             </div>
 
             <!-- Tab 5: Keselamatan -->
@@ -437,14 +437,14 @@
 
     <!-- JavaScript Logik Aplikasi & Firebase Sync -->
     <script>
-        // FIREBASE CONFIGURATION (PUBLIC DEMO DATABASE FOR EM6)
-        const firebaseConfig = {
-            databaseURL: "https://em6-pickleball-default-rtdb.asia-southeast1.firebasedatabase.app"
-        };
+        // =========================================================================
+        // 🚨 SILA MASUKKAN URL REALTIME DATABASE FIREBASE ANDA DI SINI! 🚨
+        // Contoh: "https://em6-pickleball-xxxx-default-rtdb.asia-southeast1.firebasedatabase.app"
+        // =========================================================================
+        const FIREBASE_DATABASE_URL = "https://EM6-PICKLEBALL-ARENA-DEFAULT-RTDB.ASIA-SOUTHEAST1.FIREBASEDATABASE.APP"; 
         
-        // Inisialisasi Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+        let db = null;
+        let isFirebaseConnected = false;
 
         const OWNER_WHATSAPP = "60179610108";
 
@@ -488,7 +488,7 @@
         let qrCodeInstance = null;
 
         // TETAPAN DEFAULT KEMAS KINI
-        let settings = {
+        let defaultSettings = {
             offPeakPrice: 20.00,
             peakPrice: 35.00,
             paddlePrice: 5.00,
@@ -507,7 +507,9 @@
             }
         };
 
-        let bookings = [];
+        // Muat turun dari localStorage jika tiada Firebase
+        let settings = JSON.parse(localStorage.getItem('em6_settings')) || defaultSettings;
+        let bookings = JSON.parse(localStorage.getItem('em6_bookings')) || [];
 
         window.onload = function() {
             const today = new Date();
@@ -519,56 +521,81 @@
             dateInput.value = `${yyyy}-${mm}-${dd}`;
             
             updateDayFromDate();
-            
-            // LISTEN TO FIREBASE REALTIME UPDATES
-            initFirebaseListeners();
+            loadSettingsToUI();
+            renderVisualCourts();
+            calculateTotal();
+
+            // Sedia Firebase jika URL telah diisi
+            initFirebase();
         };
 
-        function initFirebaseListeners() {
+        function initFirebase() {
             const syncBadge = document.getElementById('syncStatus');
             const syncText = document.getElementById('syncText');
 
-            // 1. Listen Tetapan Owner dari Firebase Cloud
-            db.ref('em6_settings').on('value', (snapshot) => {
-                const cloudSettings = snapshot.val();
-                if(cloudSettings) {
-                    settings = cloudSettings;
-                } else {
-                    // Simpan tetapan asal jika firebase masih kosong
-                    db.ref('em6_settings').set(settings);
-                }
-                loadSettingsToUI();
-                renderVisualCourts();
-                calculateTotal();
-                togglePaymentQR();
-                
-                syncBadge.className = "inline-block w-2.5 h-2.5 bg-emerald-500 rounded-full";
-                syncText.innerText = "Terhubung ke Database Cloud (Real-time)";
-            });
+            if (FIREBASE_DATABASE_URL && !FIREBASE_DATABASE_URL.includes("DEFAULT-RTDB")) {
+                try {
+                    firebase.initializeApp({ databaseURL: FIREBASE_DATABASE_URL });
+                    db = firebase.database();
+                    isFirebaseConnected = true;
 
-            // 2. Listen Senarai Tempahan dari Firebase Cloud
-            db.ref('em6_bookings').on('value', (snapshot) => {
-                const cloudBookings = snapshot.val();
-                bookings = cloudBookings ? Object.values(cloudBookings) : [];
-                
-                renderVisualCourts();
-                if(!document.getElementById('adminModal').classList.contains('hidden')) {
-                    renderAdminBookings();
+                    syncBadge.className = "inline-block w-2.5 h-2.5 bg-emerald-500 rounded-full";
+                    syncText.innerText = "Terhubung ke Database Cloud (Real-Time)";
+
+                    // 1. Listen Tetapan
+                    db.ref('em6_settings').on('value', (snapshot) => {
+                        const cloudSettings = snapshot.val();
+                        if (cloudSettings) {
+                            settings = cloudSettings;
+                            localStorage.setItem('em6_settings', JSON.stringify(settings));
+                        } else {
+                            db.ref('em6_settings').set(settings);
+                        }
+                        loadSettingsToUI();
+                        renderVisualCourts();
+                        calculateTotal();
+                        togglePaymentQR();
+                    });
+
+                    // 2. Listen Tempahan
+                    db.ref('em6_bookings').on('value', (snapshot) => {
+                        const cloudBookings = snapshot.val();
+                        bookings = cloudBookings ? Object.values(cloudBookings) : [];
+                        localStorage.setItem('em6_bookings', JSON.stringify(bookings));
+                        
+                        renderVisualCourts();
+                        if (!document.getElementById('adminModal').classList.contains('hidden')) {
+                            renderAdminBookings();
+                        }
+                    });
+
+                } catch (e) {
+                    console.error("Firebase Connection Error:", e);
+                    setFallbackStatus();
                 }
-            });
+            } else {
+                setFallbackStatus();
+            }
         }
 
-        function saveSettingsToCloud() {
-            db.ref('em6_settings').set(settings);
+        function setFallbackStatus() {
+            const syncBadge = document.getElementById('syncStatus');
+            const syncText = document.getElementById('syncText');
+            syncBadge.className = "inline-block w-2.5 h-2.5 bg-blue-500 rounded-full";
+            syncText.innerText = "Mod Simpanan Tempatan (Local Storage)";
         }
 
-        function saveBookingsToCloud() {
-            // Transform array to object indexed by refId for Firebase
-            const bookingsObj = {};
-            bookings.forEach(b => {
-                bookingsObj[b.refId] = b;
-            });
-            db.ref('em6_bookings').set(bookingsObj);
+        function syncDataToStorage() {
+            localStorage.setItem('em6_settings', JSON.stringify(settings));
+            localStorage.setItem('em6_bookings', JSON.stringify(bookings));
+
+            if (isFirebaseConnected && db) {
+                db.ref('em6_settings').set(settings);
+                
+                const bookingsObj = {};
+                bookings.forEach(b => { bookingsObj[b.refId] = b; });
+                db.ref('em6_bookings').set(bookingsObj);
+            }
         }
 
         function loadSettingsToUI() {
@@ -593,6 +620,8 @@
             document.getElementById('court1Active').checked = settings.activeCourts.court1;
             document.getElementById('court2Active').checked = settings.activeCourts.court2;
             document.getElementById('court3Active').checked = settings.activeCourts.court3;
+
+            togglePaymentQR();
         }
 
         function updateDayFromDate() {
@@ -847,8 +876,9 @@
                 timestamp: new Date().toISOString()
             };
 
-            // SIMPAN HANTAR TRUS KE CLOUD DATABASE
-            db.ref('em6_bookings/' + refNo).set(newBooking);
+            // SIMPAN TEMPAHAN
+            bookings.push(newBooking);
+            syncDataToStorage();
 
             document.getElementById('refNo').innerText = `Ref No: ${refNo}`;
             document.getElementById('payMethodDisplay').innerText = `Kaedah: ${methodLabel}`;
@@ -864,7 +894,7 @@
             document.getElementById('receiptSection').classList.remove('hidden');
             document.getElementById('receiptSection').scrollIntoView({ behavior: 'smooth' });
             
-            alert("Tempahan berjaya dihantar ke Cloud Database! Sila tekan butang WhatsApp untuk menghantar resit kepada Owner.");
+            alert("Tempahan berjaya dihantar! Sila tekan butang WhatsApp di bawah untuk mengesahkan tempahan.");
         }
 
         function sendToWhatsappOwner() {
@@ -994,18 +1024,33 @@
         }
 
         function approveBooking(refId) {
-            db.ref('em6_bookings/' + refId + '/status').set('Diluluskan');
-            alert(`Tempahan ${refId} telah DILULUSKAN.`);
+            const index = bookings.findIndex(b => b.refId === refId);
+            if(index > -1) {
+                bookings[index].status = 'Diluluskan';
+                syncDataToStorage();
+                renderAdminBookings();
+                renderVisualCourts();
+                alert(`Tempahan ${refId} telah DILULUSKAN.`);
+            }
         }
 
         function rejectBooking(refId) {
-            db.ref('em6_bookings/' + refId + '/status').set('Ditolak');
-            alert(`Tempahan ${refId} telah DITOLAK.`);
+            const index = bookings.findIndex(b => b.refId === refId);
+            if(index > -1) {
+                bookings[index].status = 'Ditolak';
+                syncDataToStorage();
+                renderAdminBookings();
+                renderVisualCourts();
+                alert(`Tempahan ${refId} telah DITOLAK.`);
+            }
         }
 
         function clearHistory() {
-            if(confirm("Adakah anda pasti mahu memadam semua sejarah tempahan dari Cloud Database?")) {
-                db.ref('em6_bookings').remove();
+            if(confirm("Adakah anda pasti mahu memadam semua sejarah tempahan?")) {
+                bookings = [];
+                syncDataToStorage();
+                renderAdminBookings();
+                renderVisualCourts();
             }
         }
 
@@ -1016,8 +1061,8 @@
             settings.ballStdPrice = parseFloat(document.getElementById('settingBallStd').value) || 5;
             settings.ballPremPrice = parseFloat(document.getElementById('settingBallPrem').value) || 19;
             
-            saveSettingsToCloud();
-            alert("Tetapan harga telah dikemaskini ke Cloud Database.");
+            syncDataToStorage();
+            alert("Tetapan harga telah berjaya disimpan!");
         }
 
         function saveQrSettings() {
@@ -1030,8 +1075,9 @@
             settings.qr.tngName = document.getElementById('settingTngAccName').value;
             settings.qr.tngImg = document.getElementById('settingTngQr').value;
 
-            saveSettingsToCloud();
-            alert("Maklumat akaun & QR telah dikemaskini ke Cloud Database.");
+            syncDataToStorage();
+            togglePaymentQR();
+            alert("Maklumat akaun bank & QR telah berjaya disimpan!");
         }
 
         function saveCourtSettings() {
@@ -1039,17 +1085,18 @@
             settings.activeCourts.court2 = document.getElementById('court2Active').checked;
             settings.activeCourts.court3 = document.getElementById('court3Active').checked;
 
-            saveSettingsToCloud();
-            alert("Status gelanggang telah dikemaskini ke Cloud Database.");
+            syncDataToStorage();
+            renderVisualCourts();
+            alert("Status gelanggang telah dikemaskini!");
         }
 
         function updatePin() {
             const newPin = document.getElementById('newPinInput').value.trim();
             if(newPin.length >= 4) {
                 settings.pin = newPin;
-                saveSettingsToCloud();
+                syncDataToStorage();
                 document.getElementById('newPinInput').value = "";
-                alert("PIN Owner baru telah disimpan ke Cloud Database.");
+                alert("PIN Owner baru telah BERJAYA disimpan!");
             } else {
                 alert("Sila masukkan sekurang-kurangnya 4 digit PIN.");
             }
@@ -1076,20 +1123,19 @@
 
         function saveEditBooking() {
             const refId = document.getElementById('editRefId').value;
-            const b = bookings.find(item => item.refId === refId);
-            if(b) {
-                const updatedData = {
-                    ...b,
-                    custName: document.getElementById('editCustName').value.trim(),
-                    custPhone: document.getElementById('editCustPhone').value.trim(),
-                    date: document.getElementById('editDate').value,
-                    totalAmount: parseFloat(document.getElementById('editAmount').value) || b.totalAmount,
-                    status: document.getElementById('editStatus').value
-                };
+            const index = bookings.findIndex(item => item.refId === refId);
+            if(index > -1) {
+                bookings[index].custName = document.getElementById('editCustName').value.trim();
+                bookings[index].custPhone = document.getElementById('editCustPhone').value.trim();
+                bookings[index].date = document.getElementById('editDate').value;
+                bookings[index].totalAmount = parseFloat(document.getElementById('editAmount').value) || bookings[index].totalAmount;
+                bookings[index].status = document.getElementById('editStatus').value;
 
-                db.ref('em6_bookings/' + refId).set(updatedData);
+                syncDataToStorage();
+                renderAdminBookings();
+                renderVisualCourts();
                 closeEditModal();
-                alert("Maklumat tempahan berjaya dikemaskini di Cloud Database.");
+                alert("Maklumat tempahan berjaya dikemaskini.");
             }
         }
 
