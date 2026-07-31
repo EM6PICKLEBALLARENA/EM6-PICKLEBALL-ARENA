@@ -10,7 +10,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="EM6 Pickleball Arena">
+    <meta name="apple-mobile-web-app-title" content="EM6 Arena">
 
     <!-- Web App Manifest Dynamic Link -->
     <link rel="manifest" id="manifestLink">
@@ -33,14 +33,13 @@
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen pb-12 select-none">
 
-    <!-- APP HEADER WITH EM6 LOGO -->
+    <!-- APP HEADER WITH EM6 LOGO & INSTALL BUTTON -->
     <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-lg">
         <div class="max-w-md mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <!-- LOGO EM6 ARENA -->
                 <div class="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center p-0.5 shadow-md shadow-amber-500/20 overflow-hidden">
                     <img id="appLogo" src="logo-em6.png" alt="EM6 Logo" class="w-full h-full object-cover rounded-[10px]" onerror="this.onerror=null; this.classList.add('hidden'); document.getElementById('fallbackLogo').classList.remove('hidden');">
-                    <!-- Fallback Badge jika logo-em6.png tiada lagi -->
                     <span id="fallbackLogo" class="hidden text-slate-950 font-black text-sm tracking-tighter">EM6</span>
                 </div>
 
@@ -53,9 +52,16 @@
                 </div>
             </div>
             
-            <button onclick="openAdminModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1">
-                ⚙️ <span>Owner</span>
-            </button>
+            <div class="flex items-center gap-2">
+                <!-- BUTANG MUAT TURUN APP (INSTALL PWA) -->
+                <button id="installAppBtn" onclick="installPWA()" class="hidden px-2.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:scale-95 text-slate-950 rounded-xl text-xs font-black shadow-md transition flex items-center gap-1">
+                    <span>📲</span> <span>Muat Turun</span>
+                </button>
+
+                <button onclick="openAdminModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1">
+                    ⚙️ <span>Owner</span>
+                </button>
+            </div>
         </div>
     </header>
 
@@ -70,12 +76,10 @@
                 <span id="selectedDateBadge" class="text-[10px] font-bold text-slate-300 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700"></span>
             </div>
 
-            <!-- Horizontal Date Picker Bar (Scroll & Click) -->
             <div id="dateSelectorContainer" class="flex gap-2 overflow-x-auto pb-1 no-scrollbar pt-1">
                 <!-- Rendered dynamically via JS -->
             </div>
 
-            <!-- Hidden Input File / Data Target -->
             <input type="hidden" id="bookingDate">
         </section>
 
@@ -88,7 +92,6 @@
                 <span id="durationBadge" class="text-[10px] bg-blue-900/60 text-blue-300 font-bold px-2 py-0.5 rounded-full border border-blue-700/50">0 Jam Dipilih</span>
             </div>
 
-            <!-- Visual Court Grid Container -->
             <div id="visualCourtGrid" class="space-y-3">
                 <!-- Rendered dynamically by JS -->
             </div>
@@ -113,7 +116,6 @@
 
             <hr class="border-slate-800">
 
-            <!-- Add-ons Selector -->
             <div class="space-y-3">
                 <h3 class="text-xs font-bold text-slate-300">Sewa/Beli Peralatan</h3>
 
@@ -380,7 +382,7 @@
 
     <!-- MAIN JAVASCRIPT -->
     <script>
-        // Dynamic PWA
+        // Dynamic PWA Manifest Setup
         (function initDynamicPWA() {
             const manifestData = {
                 "name": "EM6 Pickleball Arena",
@@ -399,6 +401,41 @@
             const blob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
             document.getElementById('manifestLink').setAttribute('href', URL.createObjectURL(blob));
         })();
+
+        // LOGIK PWA MUAT TURUN / INSTALL APP
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const installBtn = document.getElementById('installAppBtn');
+            if (installBtn) installBtn.classList.remove('hidden');
+        });
+
+        async function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    console.log('Pengguna bersetuju memuat turun aplikasi.');
+                }
+                deferredPrompt = null;
+                document.getElementById('installAppBtn').classList.add('hidden');
+            } else {
+                alert("Untuk peranti iOS/Safari: Tekan butang 'Share' dan pilih 'Add to Home Screen'.");
+            }
+        }
+
+        // Daftar Dummy Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swCode = `
+                    self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
+                    self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));
+                `;
+                const blob = new Blob([swCode], { type: 'text/javascript' });
+                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(err => console.log('SW Error:', err));
+            });
+        }
 
         const FIREBASE_DATABASE_URL = ""; 
         const OWNER_WHATSAPP = "60179610108"; 
@@ -461,7 +498,6 @@
             loadSavedCustomerInfo();
         });
 
-        // --- BINA PILIHAN TARIKH INTERAKTIF (KLIK SAHAJA) ---
         function generateInteractiveDateBar() {
             const container = document.getElementById("dateSelectorContainer");
             container.innerHTML = "";
