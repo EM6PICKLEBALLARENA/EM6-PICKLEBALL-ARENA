@@ -37,10 +37,10 @@
     <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-lg">
         <div class="max-w-md mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
-                <!-- LOGO EM6 ARENA -->
+                <!-- LOGO EM6 ARENA (Menggunakan pautan fallback secara automatik jika logo tempatan tiada) -->
                 <div class="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-300 flex items-center justify-center p-0.5 shadow-md shadow-amber-500/20 overflow-hidden">
-                    <img id="appLogo" src="logo-em6.png" alt="EM6 Logo" class="w-full h-full object-cover rounded-[10px]" onerror="this.onerror=null; this.classList.add('hidden'); document.getElementById('fallbackLogo').classList.remove('hidden');">
-                    <span id="fallbackLogo" class="hidden text-slate-950 font-black text-sm tracking-tighter">EM6</span>
+                    <img id="appLogo" src="logo-em6.png" alt="EM6 Logo" class="w-full h-full object-cover rounded-[10px]" 
+                         onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/5351/5351486.png';">
                 </div>
 
                 <div>
@@ -210,7 +210,9 @@
                 <div id="qrTitle" class="text-xs font-bold text-amber-400">Imbas Kod QR DuitNow</div>
                 
                 <div class="bg-white p-2 rounded-xl inline-block shadow-lg">
-                    <img id="merchantQrImg" src="qr-duitnow.png" alt="QR Bayaran" class="w-40 h-40 object-contain mx-auto">
+                    <!-- QR Gambar disetkan dengan fallback online automatik -->
+                    <img id="merchantQrImg" src="qr-duitnow.png" alt="QR Bayaran" class="w-40 h-40 object-contain mx-auto"
+                         onerror="this.onerror=null; this.src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=EM6ARENA_DUITNOW';">
                 </div>
 
                 <div class="text-[11px] space-y-0.5 text-slate-300">
@@ -340,8 +342,8 @@
                         <input type="text" id="settingBankAccName" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
                     </div>
                     <div>
-                        <label class="text-[10px] text-slate-400">Fail QR DuitNow (Gambar)</label>
-                        <input type="text" id="settingDuitNowQr" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white" placeholder="qr-duitnow.png">
+                        <label class="text-[10px] text-slate-400">Fail/Link QR DuitNow (Gambar)</label>
+                        <input type="text" id="settingDuitNowQr" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white" placeholder="qr-duitnow.png atau URL">
                     </div>
                     <hr class="border-slate-800 my-2">
                     <div>
@@ -353,8 +355,8 @@
                         <input type="text" id="settingTngAccName" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
                     </div>
                     <div>
-                        <label class="text-[10px] text-slate-400">Fail QR TNG (Gambar)</label>
-                        <input type="text" id="settingTngQr" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white" placeholder="qr-tng.png">
+                        <label class="text-[10px] text-slate-400">Fail/Link QR TNG (Gambar)</label>
+                        <input type="text" id="settingTngQr" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white" placeholder="qr-tng.png atau URL">
                     </div>
                 </div>
 
@@ -386,7 +388,7 @@
         (function initDynamicPWA() {
             const manifestData = {
                 "name": "EM6 Pickleball Arena",
-                "short_name": "EM6 Arena",
+                "short_name": "EM6 Pickleball Arena",
                 "start_url": "./",
                 "display": "standalone",
                 "background_color": "#0f172a",
@@ -468,6 +470,7 @@
             { startHour: 23, displayTime: "11:00 PM", type: "peak" }
         ];
 
+        // SETTINGS WITH DIRECT FALLBACK IMAGE URLS
         let settings = {
             offpeakPrice: 30.00,
             peakPrice: 40.00,
@@ -479,7 +482,7 @@
             bankAccNo: "153029150514",
             bankAccName: "MOHD FARIS AFNAN BIN ZAHARI",
             duitNowQrImg: "qr-duitnow.png",
-            tngAccNo: "0179610108",
+            tngAccNo: "121859829522",
             tngAccName: "MOHD FARIS AFNAN",
             tngQrImg: "qr-tng.png",
             court1Active: true,
@@ -559,41 +562,32 @@
             document.getElementById("selectedDateBadge").innerText = labelText;
 
             selectedSlots = [];
-            calculateTotal();
             renderCourtGrid();
-        }
-
-        function loadSavedCustomerInfo() {
-            const savedName = localStorage.getItem("em6_cust_name");
-            const savedPhone = localStorage.getItem("em6_cust_phone");
-            if(savedName) document.getElementById("custName").value = savedName;
-            if(savedPhone) document.getElementById("custPhone").value = savedPhone;
+            calculateTotal();
         }
 
         function initFirebase() {
-            try {
-                if (FIREBASE_DATABASE_URL && FIREBASE_DATABASE_URL !== "") {
-                    firebase.initializeApp({ databaseURL: FIREBASE_DATABASE_URL });
+            const syncStatus = document.getElementById("syncStatus");
+            const syncText = document.getElementById("syncText");
+
+            if (FIREBASE_DATABASE_URL && FIREBASE_DATABASE_URL.trim() !== "") {
+                try {
+                    const firebaseConfig = { databaseURL: FIREBASE_DATABASE_URL };
+                    if (!firebase.apps.length) {
+                        firebase.initializeApp(firebaseConfig);
+                    }
                     db = firebase.database();
-                    
-                    db.ref(".info/connected").on("value", (snap) => {
-                        if (snap.val() === true) {
-                            isFirebaseConnected = true;
-                            updateSyncStatus(true, "Terhubung (Live Database)");
-                        } else {
-                            isFirebaseConnected = false;
-                            updateSyncStatus(false, "Mod Luar Talian (Offline)");
-                        }
-                    });
+                    isFirebaseConnected = true;
+
+                    syncStatus.className = "inline-block w-2 h-2 bg-emerald-500 rounded-full animate-pulse";
+                    syncText.innerText = "Live Synced";
 
                     db.ref("settings").on("value", (snapshot) => {
-                        const data = snapshot.val();
-                        if (data) {
-                            settings = { ...settings, ...data };
-                            initPriceInputs();
+                        if (snapshot.exists()) {
+                            settings = { ...settings, ...snapshot.val() };
+                            updateSettingsUI();
                             renderCourtGrid();
                             calculateTotal();
-                            togglePaymentQR();
                         }
                     });
 
@@ -602,124 +596,127 @@
                         renderCourtGrid();
                         renderAdminBookings();
                     });
-                } else {
-                    updateSyncStatus(false, "Mod Tempatan (Luar Talian)");
-                    renderCourtGrid();
+
+                } catch (e) {
+                    console.error("Firebase connection failed:", e);
+                    useLocalFallback();
                 }
-            } catch (err) {
-                console.error("Firebase init error:", err);
-                updateSyncStatus(false, "Ralat Firebase");
-                renderCourtGrid();
+            } else {
+                useLocalFallback();
             }
         }
 
-        function updateSyncStatus(isLive, text) {
-            const dot = document.getElementById("syncStatus");
-            const txt = document.getElementById("syncText");
-            txt.innerText = text;
-            if (isLive) {
-                dot.className = "inline-block w-2 h-2 bg-emerald-500 rounded-full animate-pulse";
-            } else {
-                dot.className = "inline-block w-2 h-2 bg-amber-500 rounded-full";
-            }
+        function useLocalFallback() {
+            const syncStatus = document.getElementById("syncStatus");
+            const syncText = document.getElementById("syncText");
+            syncStatus.className = "inline-block w-2 h-2 bg-amber-500 rounded-full";
+            syncText.innerText = "Mod Local Storage";
+
+            const localSettings = localStorage.getItem("em6_settings");
+            if (localSettings) settings = { ...settings, ...JSON.parse(localSettings) };
+
+            const localBookings = localStorage.getItem("em6_bookings");
+            if (localBookings) allBookings = JSON.parse(localBookings);
+
+            updateSettingsUI();
+            renderCourtGrid();
+            calculateTotal();
+            renderAdminBookings();
+        }
+
+        function initPriceInputs() {
+            document.getElementById("labelPaddle").innerText = settings.paddlePrice.toFixed(2);
+            document.getElementById("labelBallStd").innerText = settings.ballStdPrice.toFixed(2);
+            document.getElementById("labelBallPrem").innerText = settings.ballPremPrice.toFixed(2);
         }
 
         function renderCourtGrid() {
-            const container = document.getElementById("visualCourtGrid");
-            container.innerHTML = "";
+            const gridContainer = document.getElementById("visualCourtGrid");
+            gridContainer.innerHTML = "";
 
             const selectedDate = document.getElementById("bookingDate").value;
 
             COURTS_DATA.forEach(court => {
                 const isActiveKey = `${court.id}Active`;
-                const isCourtActive = settings[isActiveKey] !== false;
+                if (settings[isActiveKey] === false) return;
 
                 const courtCard = document.createElement("div");
-                courtCard.className = "bg-slate-900 border border-slate-800 rounded-2xl p-3 shadow-md space-y-2.5";
+                courtCard.className = "bg-slate-900 border border-slate-800 rounded-2xl p-3.5 shadow-md space-y-3";
 
                 const courtHeader = document.createElement("div");
                 courtHeader.className = "flex justify-between items-center border-b border-slate-800 pb-2";
-                
                 courtHeader.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <span class="w-2.5 h-2.5 rounded-full ${isCourtActive ? 'bg-emerald-500' : 'bg-red-500'}"></span>
-                        <h3 class="text-xs font-bold text-white">${court.name}</h3>
-                    </div>
-                    <span class="text-[10px] text-slate-400 font-medium">${isCourtActive ? 'Tersedia' : 'Tutup'}</span>
+                    <span class="font-bold text-xs text-slate-200 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span> ${court.name}
+                    </span>
+                    <span class="text-[10px] text-slate-400 font-medium">Off-Peak: RM${settings.offpeakPrice} | Peak: RM${settings.peakPrice}</span>
                 `;
                 courtCard.appendChild(courtHeader);
-
-                if (!isCourtActive) {
-                    const closedMsg = document.createElement("div");
-                    closedMsg.className = "text-center py-4 text-xs text-slate-500 italic";
-                    closedMsg.innerText = "Gelanggang tidak dibuka untuk tempahan.";
-                    courtCard.appendChild(closedMsg);
-                    container.appendChild(courtCard);
-                    return;
-                }
 
                 const slotsGrid = document.createElement("div");
                 slotsGrid.className = "grid grid-cols-4 gap-1.5";
 
                 ALL_SLOTS.forEach(slot => {
-                    let isBooked = false;
-                    if (allBookings[selectedDate]) {
-                        Object.values(allBookings[selectedDate]).forEach(b => {
-                            if (b.slots && b.slots.some(s => s.courtId === court.id && s.startHour === slot.startHour)) {
-                                isBooked = true;
-                            }
-                        });
-                    }
-
-                    const isSelected = selectedSlots.some(s => s.courtId === court.id && s.startHour === slot.startHour);
+                    const slotKey = `${selectedDate}_${court.id}_${slot.startHour}`;
+                    const isBooked = isSlotBooked(selectedDate, court.id, slot.startHour);
+                    const isSelected = selectedSlots.some(s => s.key === slotKey);
 
                     const slotBtn = document.createElement("button");
                     slotBtn.type = "button";
                     
-                    let btnClass = "py-2 px-1 rounded-xl text-[10px] font-bold transition flex flex-col items-center justify-center gap-0.5 active:scale-95 border ";
-                    
+                    let btnStyle = "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700";
+                    let badgeText = slot.type === 'peak' ? 'PEAK' : 'OFF';
+                    let badgeStyle = slot.type === 'peak' ? 'text-amber-400/70' : 'text-slate-500';
+
                     if (isBooked) {
-                        btnClass += "bg-red-950/40 border-red-900/50 text-red-400 cursor-not-allowed opacity-60";
+                        btnStyle = "bg-rose-950/40 border-rose-900/50 text-rose-400/50 cursor-not-allowed opacity-60";
+                        badgeText = "FULL";
+                        badgeStyle = "text-rose-500/80 font-bold";
                         slotBtn.disabled = true;
                     } else if (isSelected) {
-                        btnClass += "bg-amber-500 border-amber-400 text-slate-950 shadow-md shadow-amber-500/20";
-                    } else {
-                        btnClass += "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700";
+                        btnStyle = "bg-amber-500 border-amber-400 text-slate-950 font-black shadow-lg shadow-amber-500/20";
+                        badgeStyle = "text-slate-900 font-black";
                     }
 
-                    slotBtn.className = btnClass;
-                    
-                    const priceLabel = slot.type === "peak" ? `RM${settings.peakPrice}` : `RM${settings.offpeakPrice}`;
-                    const badgeType = slot.type === "peak" ? `<span class="text-[8px] opacity-75">PEAK</span>` : `<span class="text-[8px] opacity-60">OFF</span>`;
-
+                    slotBtn.className = `p-2 rounded-xl text-center border transition flex flex-col items-center justify-center gap-0.5 active:scale-95 ${btnStyle}`;
                     slotBtn.innerHTML = `
-                        <span>${slot.displayTime}</span>
-                        <div class="flex items-center gap-1">
-                            <span class="text-[9px] font-mono">${priceLabel}</span>
-                            ${badgeType}
-                        </div>
+                        <span class="text-[11px] font-bold leading-tight">${slot.displayTime}</span>
+                        <span class="text-[8px] tracking-wider uppercase font-semibold ${badgeStyle}">${badgeText}</span>
                     `;
 
                     if (!isBooked) {
-                        slotBtn.onclick = () => toggleSlotSelection(court.id, court.name, slot);
+                        slotBtn.onclick = () => toggleSlotSelection(slotKey, court.id, court.name, slot);
                     }
 
                     slotsGrid.appendChild(slotBtn);
                 });
 
                 courtCard.appendChild(slotsGrid);
-                container.appendChild(courtCard);
+                gridContainer.appendChild(courtCard);
             });
         }
 
-        function toggleSlotSelection(courtId, courtName, slot) {
-            const index = selectedSlots.findIndex(s => s.courtId === courtId && s.startHour === slot.startHour);
+        function isSlotBooked(date, courtId, hour) {
+            for (let id in allBookings) {
+                const b = allBookings[id];
+                if (b.status === "cancelled") continue;
+                if (b.date === date && b.slots) {
+                    const match = b.slots.some(s => s.courtId === courtId && s.startHour === hour);
+                    if (match) return true;
+                }
+            }
+            return false;
+        }
+
+        function toggleSlotSelection(key, courtId, courtName, slot) {
+            const index = selectedSlots.findIndex(s => s.key === key);
             if (index > -1) {
                 selectedSlots.splice(index, 1);
             } else {
                 selectedSlots.push({
-                    courtId,
-                    courtName,
+                    key: key,
+                    courtId: courtId,
+                    courtName: courtName,
                     startHour: slot.startHour,
                     displayTime: slot.displayTime,
                     type: slot.type
@@ -729,8 +726,8 @@
             calculateTotal();
         }
 
-        function adjustQty(inputId, delta) {
-            const input = document.getElementById(inputId);
+        function adjustQty(id, delta) {
+            const input = document.getElementById(id);
             let val = parseInt(input.value) || 0;
             val = Math.max(0, val + delta);
             input.value = val;
@@ -738,188 +735,201 @@
         }
 
         function calculateTotal() {
-            let totalCourt = 0;
-            let countOffPeak = 0;
-            let countPeak = 0;
+            let offpeakCount = 0;
+            let peakCount = 0;
 
             selectedSlots.forEach(s => {
-                if (s.type === "peak") {
-                    totalCourt += parseFloat(settings.peakPrice);
-                    countPeak++;
-                } else {
-                    totalCourt += parseFloat(settings.offpeakPrice);
-                    countOffPeak++;
-                }
+                if (s.type === 'peak') peakCount++;
+                else offpeakCount++;
             });
+
+            const courtTotal = (offpeakCount * settings.offpeakPrice) + (peakCount * settings.peakPrice);
 
             const paddleQty = parseInt(document.getElementById("paddleQty").value) || 0;
             const ballStdQty = parseInt(document.getElementById("ballStdQty").value) || 0;
             const ballPremQty = parseInt(document.getElementById("ballPremQty").value) || 0;
 
-            const totalPaddle = paddleQty * parseFloat(settings.paddlePrice);
-            const totalBallStd = ballStdQty * parseFloat(settings.ballStdPrice);
-            const totalBallPrem = ballPremQty * parseFloat(settings.ballPremPrice);
+            const paddleTotal = paddleQty * settings.paddlePrice;
+            const ballStdTotal = ballStdQty * settings.ballStdPrice;
+            const ballPremTotal = ballPremQty * settings.ballPremPrice;
 
-            const grandTotal = totalCourt + totalPaddle + totalBallStd + totalBallPrem;
+            const grandTotal = courtTotal + paddleTotal + ballStdTotal + ballPremTotal;
 
             document.getElementById("durationBadge").innerText = `${selectedSlots.length} Jam Dipilih`;
-            document.getElementById("courtPriceDisplay").innerText = `RM ${totalCourt.toFixed(2)}`;
-            document.getElementById("hoursBreakdownDisplay").innerText = `(${countOffPeak}j Off-Peak, ${countPeak}j Peak)`;
             
-            document.getElementById("paddlePriceDisplay").innerText = `RM ${totalPaddle.toFixed(2)}`;
-            document.getElementById("ballStdPriceDisplay").innerText = `RM ${totalBallStd.toFixed(2)}`;
-            document.getElementById("ballPremPriceDisplay").innerText = `RM ${totalBallPrem.toFixed(2)}`;
-            
+            const summaryContainer = document.getElementById("selectedCourtTimeText");
+            if (selectedSlots.length === 0) {
+                summaryContainer.innerHTML = `<span class="text-slate-500 italic">Sila pilih slot di atas...</span>`;
+            } else {
+                summaryContainer.innerHTML = selectedSlots.map(s => `
+                    <div class="flex justify-between items-center py-0.5">
+                        <span>• ${s.courtName} (${s.displayTime})</span>
+                        <span class="font-bold text-amber-400">RM${s.type === 'peak' ? settings.peakPrice : settings.offpeakPrice}</span>
+                    </div>
+                `).join("");
+            }
+
+            document.getElementById("courtPriceDisplay").innerText = `RM ${courtTotal.toFixed(2)}`;
+            document.getElementById("hoursBreakdownDisplay").innerText = `(${offpeakCount}j Off-Peak, ${peakCount}j Peak)`;
+            document.getElementById("paddlePriceDisplay").innerText = `RM ${paddleTotal.toFixed(2)}`;
+            document.getElementById("ballStdPriceDisplay").innerText = `RM ${ballStdTotal.toFixed(2)}`;
+            document.getElementById("ballPremPriceDisplay").innerText = `RM ${ballPremTotal.toFixed(2)}`;
             document.getElementById("totalPriceDisplay").innerText = `RM ${grandTotal.toFixed(2)}`;
             document.getElementById("qrAmountDisplay").innerText = `RM ${grandTotal.toFixed(2)}`;
-
-            const textSummary = document.getElementById("selectedCourtTimeText");
-            if (selectedSlots.length === 0) {
-                textSummary.innerHTML = `<span class="text-slate-500 italic">Sila pilih slot di atas...</span>`;
-            } else {
-                const grouped = {};
-                selectedSlots.forEach(s => {
-                    if (!grouped[s.courtName]) grouped[s.courtName] = [];
-                    grouped[s.courtName].push(s.displayTime);
-                });
-                
-                let html = "";
-                Object.keys(grouped).forEach(cName => {
-                    html += `<div><b class="text-amber-400">${cName}:</b> ${grouped[cName].join(", ")}</div>`;
-                });
-                textSummary.innerHTML = html;
-            }
         }
 
         function togglePaymentQR() {
             const method = document.getElementById("paymentMethod").value;
-            const title = document.getElementById("qrTitle");
+            const qrTitle = document.getElementById("qrTitle");
+            const qrImg = document.getElementById("merchantQrImg");
             const bankName = document.getElementById("displayBankName");
             const accName = document.getElementById("displayAccName");
             const accNo = document.getElementById("displayAccNo");
-            const qrImg = document.getElementById("merchantQrImg");
 
-            if (method === "tng") {
-                title.innerText = "Imbas Kod QR Touch 'n Go";
-                bankName.innerText = "TNG eWallet";
-                accName.innerText = settings.tngAccName;
-                accNo.innerText = settings.tngAccNo;
-                qrImg.src = settings.tngQrImg;
-            } else {
-                title.innerText = "Imbas Kod QR DuitNow";
+            if (method === "duitnow") {
+                qrTitle.innerText = "Imbas Kod QR DuitNow";
+                qrImg.src = settings.duitNowQrImg;
+                qrImg.onerror = function() {
+                    this.onerror = null;
+                    this.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=EM6ARENA_DUITNOW';
+                };
                 bankName.innerText = settings.bankName;
                 accName.innerText = settings.bankAccName;
                 accNo.innerText = settings.bankAccNo;
-                qrImg.src = settings.duitNowQrImg;
+            } else {
+                qrTitle.innerText = "Imbas Kod QR Touch 'n Go";
+                qrImg.src = settings.tngQrImg;
+                qrImg.onerror = function() {
+                    this.onerror = null;
+                    this.src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=EM6ARENA_TNG';
+                };
+                bankName.innerText = "Touch 'n Go eWallet";
+                accName.innerText = settings.tngAccName;
+                accNo.innerText = settings.tngAccNo;
             }
         }
 
-        function generateReceipt() {
+        function loadSavedCustomerInfo() {
+            const savedName = localStorage.getItem("em6_custName");
+            const savedPhone = localStorage.getItem("em6_custPhone");
+            if (savedName) document.getElementById("custName").value = savedName;
+            if (savedPhone) document.getElementById("custPhone").value = savedPhone;
+        }
+
+        async function generateReceipt() {
             const name = document.getElementById("custName").value.trim();
             const phone = document.getElementById("custPhone").value.trim();
-            const proofFile = document.getElementById("paymentProof").files[0];
+            const proofInput = document.getElementById("paymentProof");
 
             if (selectedSlots.length === 0) {
                 alert("Sila pilih sekurang-kurangnya satu slot gelanggang.");
                 return;
             }
             if (!name || !phone) {
-                alert("Sila isi Nama Penuh dan Nombor WhatsApp anda.");
+                alert("Sila masukkan nama dan nombor WhatsApp anda.");
                 return;
             }
-            if (!proofFile) {
-                alert("Sila muat naik resit bukti pembayaran.");
+            if (!proofInput.files || proofInput.files.length === 0) {
+                alert("Sila muat naik resit bayaran sebagai bukti pembayaran.");
                 return;
             }
 
-            localStorage.setItem("em6_cust_name", name);
-            localStorage.setItem("em6_cust_phone", phone);
+            localStorage.setItem("em6_custName", name);
+            localStorage.setItem("em6_custPhone", phone);
 
             currentGeneratedRef = "EM6-" + Math.floor(100000 + Math.random() * 900000);
+            const date = document.getElementById("bookingDate").value;
+
+            const paddleQty = parseInt(document.getElementById("paddleQty").value) || 0;
+            const ballStdQty = parseInt(document.getElementById("ballStdQty").value) || 0;
+            const ballPremQty = parseInt(document.getElementById("ballPremQty").value) || 0;
+
+            let offpeakCount = 0;
+            let peakCount = 0;
+            selectedSlots.forEach(s => {
+                if (s.type === 'peak') peakCount++;
+                else offpeakCount++;
+            });
+
+            const courtTotal = (offpeakCount * settings.offpeakPrice) + (peakCount * settings.peakPrice);
+            const total = courtTotal + (paddleQty * settings.paddlePrice) + (ballStdQty * settings.ballStdPrice) + (ballPremQty * settings.ballPremPrice);
+
+            const bookingData = {
+                id: currentGeneratedRef,
+                date: date,
+                customerName: name,
+                customerPhone: phone,
+                slots: selectedSlots,
+                addOns: { paddleQty, ballStdQty, ballPremQty },
+                totalAmount: total,
+                paymentMethod: document.getElementById("paymentMethod").value,
+                status: "pending",
+                createdAt: new Date().toISOString()
+            };
+
+            if (isFirebaseConnected && db) {
+                await db.ref("bookings/" + currentGeneratedRef).set(bookingData);
+            } else {
+                allBookings[currentGeneratedRef] = bookingData;
+                localStorage.setItem("em6_bookings", JSON.stringify(allBookings));
+                renderCourtGrid();
+                renderAdminBookings();
+            }
+
             document.getElementById("refNo").innerText = `Ref ID: ${currentGeneratedRef}`;
-            
-            const payMethod = document.getElementById("paymentMethod").value === "tng" ? "TNG eWallet" : "DuitNow";
-            document.getElementById("payMethodDisplay").innerText = payMethod;
+            document.getElementById("payMethodDisplay").innerText = bookingData.paymentMethod.toUpperCase();
 
             const qrContainer = document.getElementById("qrcode");
             qrContainer.innerHTML = "";
             new QRCode(qrContainer, {
                 text: currentGeneratedRef,
-                width: 128,
-                height: 128
+                width: 120,
+                height: 120
             });
 
-            const date = document.getElementById("bookingDate").value;
-            const newBooking = {
-                refId: currentGeneratedRef,
-                customerName: name,
-                customerPhone: phone,
-                slots: selectedSlots,
-                date: date,
-                paymentMethod: payMethod,
-                totalAmount: document.getElementById("totalPriceDisplay").innerText,
-                status: "Pending Verification",
-                timestamp: Date.now()
-            };
-
-            if (isFirebaseConnected && db) {
-                db.ref(`bookings/${date}/${currentGeneratedRef}`).set(newBooking);
-            } else {
-                if (!allBookings[date]) allBookings[date] = {};
-                allBookings[date][currentGeneratedRef] = newBooking;
-                renderCourtGrid();
-            }
-
-            const receiptSec = document.getElementById("receiptSection");
-            receiptSec.classList.remove("hidden");
-            receiptSec.scrollIntoView({ behavior: 'smooth' });
+            document.getElementById("receiptSection").classList.remove("hidden");
+            document.getElementById("receiptSection").scrollIntoView({ behavior: 'smooth' });
         }
 
         function sendToWhatsappOwner() {
-            const name = document.getElementById("custName").value.trim();
-            const phone = document.getElementById("custPhone").value.trim();
-            const date = document.getElementById("bookingDate").value;
-            const total = document.getElementById("totalPriceDisplay").innerText;
+            if (!currentGeneratedRef) return;
 
-            let slotText = "";
-            const grouped = {};
-            selectedSlots.forEach(s => {
-                if (!grouped[s.courtName]) grouped[s.courtName] = [];
-                grouped[s.courtName].push(s.displayTime);
-            });
-            Object.keys(grouped).forEach(cName => {
-                slotText += `\n- *${cName}*: ${grouped[cName].join(", ")}`;
-            });
+            const booking = allBookings[currentGeneratedRef];
+            if (!booking) return;
 
-            const paddleQty = document.getElementById("paddleQty").value;
-            const ballStdQty = document.getElementById("ballStdQty").value;
-            const ballPremQty = document.getElementById("ballPremQty").value;
+            let slotsText = booking.slots.map(s => `• ${s.courtName}: ${s.displayTime}`).join("\n");
+            
+            let message = `*TEMPAHAN GELANGGANG EM6 ARENA*\n`;
+            message += `-----------------------------------\n`;
+            message += `*Ref ID:* ${booking.id}\n`;
+            message += `*Nama:* ${booking.customerName}\n`;
+            message += `*Telefon:* ${booking.customerPhone}\n`;
+            message += `*Tarikh:* ${booking.date}\n\n`;
+            message += `*Slot Masa:* \n${slotsText}\n\n`;
+            
+            if (booking.addOns.paddleQty > 0 || booking.addOns.ballStdQty > 0 || booking.addOns.ballPremQty > 0) {
+                message += `*Peralatan:* \n`;
+                if (booking.addOns.paddleQty > 0) message += `- Sewa Paddle: ${booking.addOns.paddleQty} unit\n`;
+                if (booking.addOns.ballStdQty > 0) message += `- Bola Standard: ${booking.addOns.ballStdQty} biji\n`;
+                if (booking.addOns.ballPremQty > 0) message += `- Bola Premium: ${booking.addOns.ballPremQty} pek\n`;
+                message += `\n`;
+            }
 
-            let addOnText = "";
-            if (paddleQty > 0) addOnText += `\n- Sewa Paddle: ${paddleQty} unit`;
-            if (ballStdQty > 0) addOnText += `\n- Bola Standard: ${ballStdQty} unit`;
-            if (ballPremQty > 0) addOnText += `\n- Bola Premium: ${ballPremQty} pek`;
+            message += `*Jumlah Bayaran:* RM ${booking.totalAmount.toFixed(2)}\n`;
+            message += `*Kaedah Bayaran:* ${booking.paymentMethod.toUpperCase()}\n`;
+            message += `-----------------------------------\n`;
+            message += `_Resit bayaran telah dimuat naik. Mohon sahkan tempahan ini. Terima kasih!_`;
 
-            const message = `*TEMPAHAN GELANGGANG EM6 ARENA*\n` +
-                `----------------------------------\n` +
-                `*Ref ID:* ${currentGeneratedRef}\n` +
-                `*Nama:* ${name}\n` +
-                `*No. Tel:* ${phone}\n` +
-                `*Tarikh:* ${date}\n` +
-                `*Gelanggang & Slot:* ${slotText}\n` +
-                (addOnText ? `*Tambahan:*${addOnText}\n` : '') +
-                `*Jumlah Bayaran:* ${total}\n` +
-                `----------------------------------\n` +
-                ` Saya telah membuat pembayaran dan menyertakan resit bayaran. Sila sahkan tempahan saya. Terima kasih!`;
-
-            window.open(`https://wa.me/${OWNER_WHATSAPP}?text=${encodeURIComponent(message)}`, '_blank');
+            const encodedMessage = encodeURIComponent(message);
+            window.open(`https://wa.me/${OWNER_WHATSAPP}?text=${encodedMessage}`, '_blank');
         }
 
+        // CONTROL CENTER OWNER (ADMIN)
         function openAdminModal() {
-            const pin = prompt("Masukkan PIN Owner untuk log masuk:");
+            const pin = prompt("Masukkan PIN Owner:");
             if (pin === settings.ownerPin) {
                 document.getElementById("adminModal").classList.remove("hidden");
-                renderAdminBookings();
+                switchTab('laporan');
             } else if (pin !== null) {
                 alert("PIN Salah!");
             }
@@ -929,28 +939,32 @@
             document.getElementById("adminModal").classList.add("hidden");
         }
 
-        function switchTab(tabName) {
-            ["laporan", "harga", "qr", "court"].forEach(t => {
-                document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`).classList.add("hidden");
-                const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}Btn`);
-                btn.className = "py-2.5 px-3 text-slate-400 hover:text-white";
+        function switchTab(tab) {
+            ['laporan', 'harga', 'qr', 'court'].forEach(t => {
+                document.getElementById(`tab${capitalize(t)}`).classList.add("hidden");
+                const btn = document.getElementById(`tab${capitalize(t)}Btn`);
+                if (btn) {
+                    btn.className = "py-2.5 px-3 text-slate-400 hover:text-white";
+                }
             });
 
-            document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`).classList.remove("hidden");
-            const activeBtn = document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}Btn`);
-            activeBtn.className = "py-2.5 px-3 font-bold border-b-2 border-amber-500 text-amber-500";
+            document.getElementById(`tab${capitalize(tab)}`).classList.remove("hidden");
+            const activeBtn = document.getElementById(`tab${capitalize(tab)}Btn`);
+            if (activeBtn) {
+                activeBtn.className = "py-2.5 px-3 font-bold border-b-2 border-amber-500 text-amber-500";
+            }
         }
 
-        function initPriceInputs() {
+        function capitalize(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+
+        function updateSettingsUI() {
             document.getElementById("settingOffPeak").value = settings.offpeakPrice;
             document.getElementById("settingPeak").value = settings.peakPrice;
             document.getElementById("settingPaddle").value = settings.paddlePrice;
             document.getElementById("settingBallStd").value = settings.ballStdPrice;
             document.getElementById("settingBallPrem").value = settings.ballPremPrice;
-
-            document.getElementById("labelPaddle").innerText = parseFloat(settings.paddlePrice).toFixed(2);
-            document.getElementById("labelBallStd").innerText = parseFloat(settings.ballStdPrice).toFixed(2);
-            document.getElementById("labelBallPrem").innerText = parseFloat(settings.ballPremPrice).toFixed(2);
 
             document.getElementById("settingBankName").value = settings.bankName;
             document.getElementById("settingBankAccNo").value = settings.bankAccNo;
@@ -964,90 +978,100 @@
             document.getElementById("court1Active").checked = settings.court1Active !== false;
             document.getElementById("court2Active").checked = settings.court2Active !== false;
             document.getElementById("court3Active").checked = settings.court3Active !== false;
+
+            initPriceInputs();
+            togglePaymentQR();
         }
 
-        function saveSettings() {
+        async function saveSettings() {
             settings.offpeakPrice = parseFloat(document.getElementById("settingOffPeak").value) || settings.offpeakPrice;
             settings.peakPrice = parseFloat(document.getElementById("settingPeak").value) || settings.peakPrice;
             settings.paddlePrice = parseFloat(document.getElementById("settingPaddle").value) || settings.paddlePrice;
             settings.ballStdPrice = parseFloat(document.getElementById("settingBallStd").value) || settings.ballStdPrice;
             settings.ballPremPrice = parseFloat(document.getElementById("settingBallPrem").value) || settings.ballPremPrice;
 
-            settings.bankName = document.getElementById("settingBankName").value;
-            settings.bankAccNo = document.getElementById("settingBankAccNo").value;
-            settings.bankAccName = document.getElementById("settingBankAccName").value;
-            settings.duitNowQrImg = document.getElementById("settingDuitNowQr").value;
+            settings.bankName = document.getElementById("settingBankName").value.trim();
+            settings.bankAccNo = document.getElementById("settingBankAccNo").value.trim();
+            settings.bankAccName = document.getElementById("settingBankAccName").value.trim();
+            settings.duitNowQrImg = document.getElementById("settingDuitNowQr").value.trim();
 
-            settings.tngAccNo = document.getElementById("settingTngAccNo").value;
-            settings.tngAccName = document.getElementById("settingTngAccName").value;
-            settings.tngQrImg = document.getElementById("settingTngQr").value;
+            settings.tngAccNo = document.getElementById("settingTngAccNo").value.trim();
+            settings.tngAccName = document.getElementById("settingTngAccName").value.trim();
+            settings.tngQrImg = document.getElementById("settingTngQr").value.trim();
 
             settings.court1Active = document.getElementById("court1Active").checked;
             settings.court2Active = document.getElementById("court2Active").checked;
             settings.court3Active = document.getElementById("court3Active").checked;
 
             if (isFirebaseConnected && db) {
-                db.ref("settings").set(settings);
+                await db.ref("settings").set(settings);
+            } else {
+                localStorage.setItem("em6_settings", JSON.stringify(settings));
             }
 
-            initPriceInputs();
+            alert("Tetapan berjaya disimpan!");
+            updateSettingsUI();
             renderCourtGrid();
             calculateTotal();
-            togglePaymentQR();
-            alert("Tetapan berjaya disimpan!");
             closeAdminModal();
         }
 
         function renderAdminBookings() {
-            const tableBody = document.getElementById("bookingHistoryTable");
-            tableBody.innerHTML = "";
+            const tbody = document.getElementById("bookingHistoryTable");
+            tbody.innerHTML = "";
 
-            let revenue = 0;
+            let totalRev = 0;
             let count = 0;
 
-            Object.keys(allBookings).forEach(date => {
-                Object.keys(allBookings[date]).forEach(refId => {
-                    const b = allBookings[date][refId];
-                    count++;
-                    
-                    const amtClean = parseFloat(b.totalAmount.replace("RM", "").trim()) || 0;
-                    revenue += amtClean;
-
-                    const tr = document.createElement("tr");
-                    tr.className = "border-b border-slate-800/60 hover:bg-slate-800/30";
-
-                    tr.innerHTML = `
-                        <td class="p-2 font-mono text-slate-300">${b.refId || refId}</td>
-                        <td class="p-2">
-                            <div class="font-bold text-white">${b.customerName}</div>
-                            <div class="text-[9px] text-slate-400">${b.customerPhone}</div>
-                        </td>
-                        <td class="p-2 font-bold text-emerald-400">${b.totalAmount}</td>
-                        <td class="p-2 text-center">
-                            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${b.status === 'Confirmed' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'}">
-                                ${b.status || 'Pending'}
-                            </span>
-                        </td>
-                        <td class="p-2 text-center">
-                            <button onclick="deleteBooking('${date}', '${refId}')" class="text-red-400 hover:text-red-300 font-bold px-1.5 py-0.5 bg-red-950/50 rounded border border-red-900/40">Padam</button>
-                        </td>
-                    `;
-                    tableBody.appendChild(tr);
-                });
+            const sortedKeys = Object.keys(allBookings).sort((a, b) => {
+                return new Date(allBookings[b].createdAt) - new Date(allBookings[a].createdAt);
             });
 
-            document.getElementById("totalRevenue").innerText = `RM ${revenue.toFixed(2)}`;
+            sortedKeys.forEach(id => {
+                const b = allBookings[id];
+                if (b.status !== "cancelled") {
+                    totalRev += b.totalAmount || 0;
+                    count++;
+                }
+
+                const tr = document.createElement("tr");
+                tr.className = "border-b border-slate-800/50 hover:bg-slate-800/30";
+
+                let statusBadge = `<span class="px-1.5 py-0.5 text-[9px] rounded font-bold bg-amber-500/20 text-amber-400">PENDING</span>`;
+                if (b.status === "confirmed") statusBadge = `<span class="px-1.5 py-0.5 text-[9px] rounded font-bold bg-emerald-500/20 text-emerald-400">LULUS</span>`;
+                if (b.status === "cancelled") statusBadge = `<span class="px-1.5 py-0.5 text-[9px] rounded font-bold bg-rose-500/20 text-rose-400">BATAL</span>`;
+
+                tr.innerHTML = `
+                    <td class="p-2 font-mono font-bold text-amber-400">${b.id}</td>
+                    <td class="p-2">
+                        <div class="font-bold text-slate-200">${b.customerName}</div>
+                        <div class="text-[10px] text-slate-400">${b.customerPhone}</div>
+                    </td>
+                    <td class="p-2 font-bold text-emerald-400">RM${(b.totalAmount || 0).toFixed(2)}</td>
+                    <td class="p-2 text-center">${statusBadge}</td>
+                    <td class="p-2 text-center">
+                        <div class="flex items-center justify-center gap-1">
+                            <button onclick="updateBookingStatus('${b.id}', 'confirmed')" class="p-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-[10px] font-bold">✓</button>
+                            <button onclick="updateBookingStatus('${b.id}', 'cancelled')" class="p-1 bg-rose-600 hover:bg-rose-500 text-white rounded text-[10px] font-bold">✕</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById("totalRevenue").innerText = `RM ${totalRev.toFixed(2)}`;
             document.getElementById("bookingCount").innerText = count;
         }
 
-        function deleteBooking(date, refId) {
-            if (confirm("Adakah anda pasti untuk memadam tempahan ini?")) {
-                if (isFirebaseConnected && db) {
-                    db.ref(`bookings/${date}/${refId}`).remove();
-                } else {
-                    delete allBookings[date][refId];
-                    renderCourtGrid();
+        async function updateBookingStatus(id, newStatus) {
+            if (isFirebaseConnected && db) {
+                await db.ref(`bookings/${id}/status`).set(newStatus);
+            } else {
+                if (allBookings[id]) {
+                    allBookings[id].status = newStatus;
+                    localStorage.setItem("em6_bookings", JSON.stringify(allBookings));
                     renderAdminBookings();
+                    renderCourtGrid();
                 }
             }
         }
