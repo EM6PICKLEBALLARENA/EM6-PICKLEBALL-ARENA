@@ -204,8 +204,7 @@
                 <div id="qrTitle" class="text-xs font-bold text-amber-400">Imbas Kod QR DuitNow</div>
                 
                 <div class="bg-white p-2 rounded-xl inline-block shadow-lg">
-                    <img id="merchantQrImg" src="qr-duitnow.png" alt="QR Bayaran" class="w-40 h-40 object-contain mx-auto"
-                         onerror="this.onerror=null; this.src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=EM6ARENA_DUITNOW';">
+                    <img id="merchantQrImg" src="" alt="QR Bayaran" class="w-40 h-40 object-contain mx-auto">
                 </div>
 
                 <div class="text-[11px] space-y-0.5 text-slate-300">
@@ -330,8 +329,8 @@
                         <input type="text" id="settingBankAccName" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
                     </div>
                     <div>
-                        <label class="text-[10px] text-slate-400">Fail/Link QR DuitNow (Gambar)</label>
-                        <input type="text" id="settingDuitNowQrImg" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white" placeholder="qr-duitnow.png atau URL">
+                        <label class="text-[10px] text-slate-400">Pautan/URL Imej QR DuitNow</label>
+                        <input type="text" id="settingDuitNowQrImg" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
                     </div>
                     <hr class="border-slate-800 my-2">
                     <div>
@@ -343,8 +342,8 @@
                         <input type="text" id="settingTngAccName" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
                     </div>
                     <div>
-                        <label class="text-[10px] text-slate-400">Fail/Link QR TNG (Gambar)</label>
-                        <input type="text" id="settingTngQr" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white" placeholder="qr-tng.png atau URL">
+                        <label class="text-[10px] text-slate-400">Pautan/URL Imej QR TNG</label>
+                        <input type="text" id="settingTngQr" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
                     </div>
                 </div>
 
@@ -462,10 +461,10 @@
             bankName: "Maybank",
             bankAccNo: "153029150514",
             bankAccName: "MOHD FARIS AFNAN BIN ZAHARI",
-            duitNowQrImg: "qr-duitnow.png",
+            duitNowQrImg: "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=DUITNOW-MAYBANK-153029150514",
             tngAccNo: "121859829522",
             tngAccName: "MOHD FARIS AFNAN",
-            tngQrImg: "qr-tng.png",
+            tngQrImg: "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TNG-EWALLET-121859829522",
             court1Active: true,
             court2Active: true,
             court3Active: true
@@ -478,7 +477,6 @@
         window.addEventListener('DOMContentLoaded', () => {
             initLocalStorageMode();
             generateInteractiveDateBar();
-            initPriceInputs();
             loadSavedCustomerInfo();
         });
 
@@ -654,11 +652,8 @@
             document.getElementById("displayBankName").innerText = settings.bankName;
             document.getElementById("displayAccName").innerText = settings.bankAccName;
             document.getElementById("displayAccNo").innerText = settings.bankAccNo;
-            document.getElementById("merchantQrImg").src = settings.duitNowQrImg;
-        }
-
-        function initPriceInputs() {
-            // Initial placeholder setups if needed
+            
+            togglePaymentQR();
         }
 
         function updateSummaryAndCalculation() {
