@@ -72,6 +72,15 @@
                 <span id="durationBadge" class="text-[10px] bg-blue-900/60 text-blue-300 font-bold px-2 py-0.5 rounded-full border border-blue-700/50">0 Jam Dipilih</span>
             </div>
 
+            <!-- NOTIS KADAR HARGA -->
+            <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-[11px] text-slate-300 flex justify-between items-center">
+                <div>
+                    <span class="text-amber-400 font-bold">Kadar Harga:</span>
+                    <div class="text-[10px] text-slate-400">8:00 Pagi - 5:00 Petang: <b class="text-white">RM30/jam</b></div>
+                    <div class="text-[10px] text-slate-400">5:00 Petang - 12:00 Malam: <b class="text-white">RM40/jam</b></div>
+                </div>
+            </div>
+
             <div id="visualCourtGrid" class="space-y-3">
                 <!-- Rendered dynamically by JS -->
             </div>
@@ -155,7 +164,7 @@
                     <span>Sewa Gelanggang:</span>
                     <span id="courtPriceDisplay" class="text-slate-200 font-bold">RM 0.00</span>
                 </div>
-                <div class="text-[10px] text-slate-500" id="hoursBreakdownDisplay">(0j Off-Peak, 0j Peak)</div>
+                <div class="text-[10px] text-slate-500" id="hoursBreakdownDisplay">(0j Biasa, 0j Malam)</div>
 
                 <div class="flex justify-between text-slate-400">
                     <span>Sewa Paddle:</span>
@@ -277,11 +286,11 @@
                 <div id="tabHarga" class="hidden space-y-3">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="text-[10px] text-slate-400">Harga Off-Peak (RM/j)</label>
+                            <label class="text-[10px] text-slate-400">Harga 8 Pagi - 5 Petang (RM/j)</label>
                             <input type="number" id="settingOffPeak" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
                         </div>
                         <div>
-                            <label class="text-[10px] text-slate-400">Harga Peak (RM/j)</label>
+                            <label class="text-[10px] text-slate-400">Harga 5 Petang - 12 Malam (RM/j)</label>
                             <input type="number" id="settingPeak" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white">
                         </div>
                     </div>
@@ -462,7 +471,11 @@
                 const btn = document.createElement("button");
                 btn.type = "button";
                 btn.id = `date-btn-${dateISO}`;
-                btn.onclick = () => selectDateInteractive(dateISO, `${dayName}, ${dayNum} ${monthName}`);
+                
+                // Pastikan event listener dipasang dengan betul pada setiap butang tarikh
+                btn.addEventListener('click', () => {
+                    selectDateInteractive(dateISO, `${dayName}, ${dayNum} ${monthName}`);
+                });
 
                 btn.className = `flex-shrink-0 w-16 py-2.5 px-2 rounded-xl text-center border transition flex flex-col items-center gap-0.5 ${
                     i === 0 
@@ -616,7 +629,7 @@
             const grandTotal = courtPrice + paddlePrice + ballStdPrice + ballPremPrice;
 
             document.getElementById("courtPriceDisplay").innerText = `RM ${courtPrice.toFixed(2)}`;
-            document.getElementById("hoursBreakdownDisplay").innerText = `(${offPeakCount}j Off-Peak @ RM${settings.offpeakPrice}, ${peakCount}j Peak @ RM${settings.peakPrice})`;
+            document.getElementById("hoursBreakdownDisplay").innerText = `(${offPeakCount}j Biasa @ RM${settings.offpeakPrice}, ${peakCount}j Malam @ RM${settings.peakPrice})`;
             document.getElementById("paddlePriceDisplay").innerText = `RM ${paddlePrice.toFixed(2)}`;
             document.getElementById("ballStdPriceDisplay").innerText = `RM ${ballStdPrice.toFixed(2)}`;
             document.getElementById("ballPremPriceDisplay").innerText = `RM ${ballPremPrice.toFixed(2)}`;
