@@ -41,8 +41,8 @@
                 <div>
                     <h1 class="font-black text-base tracking-wider text-amber-400 leading-tight">EM6 ARENA</h1>
                     <div class="flex items-center gap-1.5 text-[10px]">
-                        <span id="syncStatus" class="inline-block w-2 h-2 bg-amber-500 rounded-full"></span>
-                        <span id="syncText" class="text-slate-400 font-medium">Mod LocalStorage</span>
+                        <span id="syncStatus" class="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
+                        <span id="syncText" class="text-slate-400 font-medium">Sistem Aktif & Stabil</span>
                     </div>
                 </div>
             </div>
@@ -563,184 +563,165 @@
 
             document.getElementById("bookingDate").value = dateISO;
             document.getElementById("selectedDateBadge").innerText = formattedText;
-
+            
             selectedSlots = [];
             renderCourtGrid();
-            updateSummaryAndCalculation();
+            updateSummary();
         }
 
         function renderCourtGrid() {
-            const gridContainer = document.getElementById("visualCourtGrid");
-            gridContainer.innerHTML = "";
+            const container = document.getElementById("visualCourtGrid");
+            container.innerHTML = "";
 
-            const activeCourts = COURTS_DATA.filter(c => {
-                if (c.id === "court1") return settings.court1Active;
-                if (c.id === "court2") return settings.court2Active;
-                if (c.id === "court3") return settings.court3Active;
-                return true;
-            });
+            const currentDate = document.getElementById("bookingDate").value;
+            const bookedSlotsForDate = (allBookings[currentDate]) ? allBookings[currentDate] : {};
 
-            if (activeCourts.length === 0) {
-                gridContainer.innerHTML = `<div class="text-center p-4 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 text-xs">Tiada gelanggang dibuka buat masa ini.</div>`;
-                return;
-            }
-
-            activeCourts.forEach(court => {
+            COURTS_DATA.forEach(court => {
+                const isActive = settings[`${court.id}Active`] !== false;
+                
                 const courtCard = document.createElement("div");
-                courtCard.className = "bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2.5";
+                courtCard.className = `bg-slate-900 border ${isActive ? 'border-slate-800' : 'border-red-900/50 opacity-60'} rounded-2xl p-3.5 space-y-2.5`;
 
-                let slotsHtml = `<div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <span class="font-black text-xs text-amber-400">${court.name}</span>
-                    <span class="text-[10px] text-slate-500">Klik slot untuk pilih</span>
-                </div><div class="grid grid-cols-4 gap-1.5">`;
+                let headerHtml = `
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-black text-white flex items-center gap-1.5">
+                            <span>🏟️</span> ${court.name}
+                        </span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-md font-bold ${isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}">
+                            ${isActive ? 'Buka' : 'Tutup'}
+                        </span>
+                    </div>
+                `;
+                
+                let slotsHtml = '<div class="grid grid-cols-4 gap-1.5 pt-1">';
+                
+                if (!isActive) {
+                    slotsHtml += '<div class="col-span-4 text-center py-3 text-xs text-red-400 italic">Gelanggang ini ditutup pada tarikh ini.</div>';
+                } else {
+                    ALL_SLOTS.forEach(slot => {
+                        const slotKey = `${court.id}_${slot.startHour}`;
+                        const isBooked = bookedSlotsForDate[slotKey] && bookedSlotsForDate[slotKey].status === 'confirmed';
+                        const isSelected = selectedSlots.some(s => s.courtId === court.id && s.startHour === slot.startHour);
 
-                ALL_SLOTS.forEach(slot => {
-                    const slotKey = `${document.getElementById("bookingDate").value}_${court.id}_${slot.startHour}`;
-                    const isBooked = allBookings[slotKey] && allBookings[slotKey].status !== "Cancelled";
-                    const isSelected = selectedSlots.some(s => s.courtId === court.id && s.startHour === slot.startHour);
+                        let btnClass = "py-2 px-1 rounded-xl text-center border text-[11px] font-bold transition flex flex-col items-center justify-center ";
+                        
+                        if (isBooked) {
+                            btnClass += "bg-slate-950 border-slate-900 text-slate-600 cursor-not-allowed line-through";
+                        } else if (isSelected) {
+                            btnClass += "bg-amber-500 border-amber-400 text-slate-950 shadow-md shadow-amber-500/20 font-black scale-95";
+                        } else {
+                            btnClass += "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700 active:scale-95";
+                        }
 
-                    let btnClass = "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700";
-                    let disabledAttr = "";
+                        slotsHtml += `
+                            <button type="button" 
+                                ${isBooked ? 'disabled' : `onclick="toggleSlotSelection('${court.id}', ${slot.startHour}, '${slot.displayTime}', '${slot.type}')"`} 
+                                class="${btnClass}">
+                                <span class="leading-tight">${slot.displayTime.split(' ')[0]}</span>
+                                <span class="text-[9px] opacity-70 font-normal">${slot.displayTime.split(' ')[1]}</span>
+                            </button>
+                        `;
+                    });
+                }
+                slotsHtml += '</div>';
 
-                    if (isBooked) {
-                        btnClass = "bg-rose-950/40 border-rose-900/50 text-rose-400 opacity-60 cursor-not-allowed";
-                        disabledAttr = "disabled";
-                    } else if (isSelected) {
-                        btnClass = "bg-amber-500 border-amber-400 text-slate-950 font-black shadow-md shadow-amber-500/20";
-                    }
-
-                    slotsHtml += `
-                        <button type="button" ${disabledAttr} onclick="toggleSlotSelection('${court.id}', '${court.name}', ${slot.startHour}, '${slot.displayTime}', '${slot.type}')" 
-                            class="py-2 px-1 rounded-lg text-center border text-[11px] transition flex flex-col items-center ${btnClass}">
-                            <span class="font-bold leading-tight">${slot.displayTime.split(' ')[0]}</span>
-                            <span class="text-[9px] opacity-75">${slot.displayTime.split(' ')[1]}</span>
-                        </button>
-                    `;
-                });
-
-                slotsHtml += `</div>`;
-                courtCard.innerHTML = slotsHtml;
-                gridContainer.appendChild(courtCard);
+                courtCard.innerHTML = headerHtml + slotsHtml;
+                container.appendChild(courtCard);
             });
         }
 
-        function toggleSlotSelection(courtId, courtName, startHour, displayTime, slotType) {
+        function toggleSlotSelection(courtId, startHour, displayTime, type) {
             const index = selectedSlots.findIndex(s => s.courtId === courtId && s.startHour === startHour);
             if (index > -1) {
                 selectedSlots.splice(index, 1);
             } else {
-                selectedSlots.push({ courtId, courtName, startHour, displayTime, slotType });
+                selectedSlots.push({ courtId, startHour, displayTime, type });
             }
             renderCourtGrid();
-            updateSummaryAndCalculation();
+            updateSummary();
         }
 
-        function adjustQty(inputId, delta) {
-            const input = document.getElementById(inputId);
-            let val = parseInt(input.value) || 0;
-            val += delta;
+        function adjustQty(elementId, change) {
+            const input = document.getElementById(elementId);
+            let val = parseInt(input.value) + change;
             if (val < 0) val = 0;
             input.value = val;
-            updateSummaryAndCalculation();
+            updateSummary();
         }
 
-        function updateUIWithSettings() {
-            document.getElementById("labelPaddle").innerText = settings.paddlePrice.toFixed(2);
-            document.getElementById("labelBallStd").innerText = settings.ballStdPrice.toFixed(2);
-            document.getElementById("labelBallPrem").innerText = settings.ballPremPrice.toFixed(2);
-            
-            document.getElementById("displayBankName").innerText = settings.bankName;
-            document.getElementById("displayAccName").innerText = settings.bankAccName;
-            document.getElementById("displayAccNo").innerText = settings.bankAccNo;
-            
-            togglePaymentQR();
-        }
-
-        function updateSummaryAndCalculation() {
-            const durationBadge = document.getElementById("durationBadge");
-            const selectedTextDiv = document.getElementById("selectedCourtTimeText");
-            
-            durationBadge.innerText = `${selectedSlots.length} Jam Dipilih`;
-
-            if (selectedSlots.length === 0) {
-                selectedTextDiv.innerHTML = `<span class="text-slate-500 italic">Sila pilih slot di atas...</span>`;
-                document.getElementById("courtPriceDisplay").innerText = "RM 0.00";
-                document.getElementById("hoursBreakdownDisplay").innerText = "(0j Off-Peak, 0j Peak)";
-                document.getElementById("paddlePriceDisplay").innerText = "RM 0.00";
-                document.getElementById("ballStdPriceDisplay").innerText = "RM 0.00";
-                document.getElementById("ballPremPriceDisplay").innerText = "RM 0.00";
-                document.getElementById("totalPriceDisplay").innerText = "RM 0.00";
-                document.getElementById("qrAmountDisplay").innerText = "RM 0.00";
-                return;
-            }
-
+        function updateSummary() {
             let offPeakCount = 0;
             let peakCount = 0;
-            let listHtml = `<ul class="space-y-1">`;
-
+            
+            let textArr = [];
             selectedSlots.forEach(s => {
-                if (s.slotType === "peak") peakCount++;
-                else offPeakCount++;
-                listHtml += `<li>• ${s.courtName} (${s.displayTime})</li>`;
+                if (s.type === 'offpeak') offPeakCount++; else peakCount++;
+                
+                const cObj = COURTS_DATA.find(c => c.id === s.courtId);
+                textArr.push(`${cObj ? cObj.name : s.courtId} (${s.displayTime})`);
             });
-            listHtml += `</ul>`;
-            selectedTextDiv.innerHTML = listHtml;
 
-            const courtTotal = (offPeakCount * settings.offpeakPrice) + (peakCount * settings.peakPrice);
+            const totalHours = selectedSlots.length;
+            document.getElementById("durationBadge").innerText = `${totalHours} Jam Dipilih`;
+            
+            const timeTextContainer = document.getElementById("selectedCourtTimeText");
+            if (textArr.length > 0) {
+                timeTextContainer.innerHTML = textArr.join('<br>');
+            } else {
+                timeTextContainer.innerHTML = '<span class="text-slate-500 italic">Sila pilih slot di atas...</span>';
+            }
+
+            const courtPrice = (offPeakCount * settings.offpeakPrice) + (peakCount * settings.peakPrice);
             const paddleQty = parseInt(document.getElementById("paddleQty").value) || 0;
             const ballStdQty = parseInt(document.getElementById("ballStdQty").value) || 0;
             const ballPremQty = parseInt(document.getElementById("ballPremQty").value) || 0;
 
-            const paddleTotal = paddleQty * settings.paddlePrice;
-            const ballStdTotal = ballStdQty * settings.ballStdPrice;
-            const ballPremTotal = ballPremQty * settings.ballPremPrice;
+            const paddlePrice = paddleQty * settings.paddlePrice;
+            const ballStdPrice = ballStdQty * settings.ballStdPrice;
+            const ballPremPrice = ballPremQty * settings.ballPremPrice;
 
-            const grandTotal = courtTotal + paddleTotal + ballStdTotal + ballPremTotal;
+            const grandTotal = courtPrice + paddlePrice + ballStdPrice + ballPremPrice;
 
-            document.getElementById("courtPriceDisplay").innerText = `RM ${courtTotal.toFixed(2)}`;
-            document.getElementById("hoursBreakdownDisplay").innerText = `(${offPeakCount}j Off-Peak, ${peakCount}j Peak)`;
-            document.getElementById("paddlePriceDisplay").innerText = `RM ${paddleTotal.toFixed(2)}`;
-            document.getElementById("ballStdPriceDisplay").innerText = `RM ${ballStdTotal.toFixed(2)}`;
-            document.getElementById("ballPremPriceDisplay").innerText = `RM ${ballPremTotal.toFixed(2)}`;
+            document.getElementById("courtPriceDisplay").innerText = `RM ${courtPrice.toFixed(2)}`;
+            document.getElementById("hoursBreakdownDisplay").innerText = `(${offPeakCount}j Off-Peak @ RM${settings.offpeakPrice}, ${peakCount}j Peak @ RM${settings.peakPrice})`;
+            document.getElementById("paddlePriceDisplay").innerText = `RM ${paddlePrice.toFixed(2)}`;
+            document.getElementById("ballStdPriceDisplay").innerText = `RM ${ballStdPrice.toFixed(2)}`;
+            document.getElementById("ballPremPriceDisplay").innerText = `RM ${ballPremPrice.toFixed(2)}`;
             document.getElementById("totalPriceDisplay").innerText = `RM ${grandTotal.toFixed(2)}`;
             document.getElementById("qrAmountDisplay").innerText = `RM ${grandTotal.toFixed(2)}`;
         }
 
         function togglePaymentQR() {
             const method = document.getElementById("paymentMethod").value;
-            const qrTitle = document.getElementById("qrTitle");
-            const merchantQrImg = document.getElementById("merchantQrImg");
-            const bankNameEl = document.getElementById("displayBankName");
-            const accNameEl = document.getElementById("displayAccName");
-            const accNoEl = document.getElementById("displayAccNo");
-
-            if (method === "tng") {
-                qrTitle.innerText = "Imbas Kod QR Touch 'n Go";
-                merchantQrImg.src = settings.tngQrImg;
-                bankNameEl.innerText = "Touch 'n Go eWallet";
-                accNameEl.innerText = settings.tngAccName;
-                accNoEl.innerText = settings.tngAccNo;
-                document.getElementById("payMethodDisplay").innerText = "Touch 'n Go";
+            if (method === 'tng') {
+                document.getElementById("qrTitle").innerText = "Imbas Kod QR Touch 'n Go";
+                document.getElementById("merchantQrImg").src = settings.tngQrImg;
+                document.getElementById("displayBankName").innerText = "Touch 'n Go eWallet";
+                document.getElementById("displayAccName").innerText = settings.tngAccName;
+                document.getElementById("displayAccNo").innerText = settings.tngAccNo;
             } else {
-                qrTitle.innerText = "Imbas Kod QR DuitNow";
-                merchantQrImg.src = settings.duitNowQrImg;
-                bankNameEl.innerText = settings.bankName;
-                accNameEl.innerText = settings.bankAccName;
-                accNoEl.innerText = settings.bankAccNo;
-                document.getElementById("payMethodDisplay").innerText = "DuitNow QR";
+                document.getElementById("qrTitle").innerText = "Imbas Kod QR DuitNow";
+                document.getElementById("merchantQrImg").src = settings.duitNowQrImg;
+                document.getElementById("displayBankName").innerText = settings.bankName;
+                document.getElementById("displayAccName").innerText = settings.bankAccName;
+                document.getElementById("displayAccNo").innerText = settings.bankAccNo;
             }
         }
 
         function saveCustomerInfo() {
-            localStorage.setItem("em6_custName", document.getElementById("custName").value);
-            localStorage.setItem("em6_custPhone", document.getElementById("custPhone").value);
+            const name = document.getElementById("custName").value;
+            const phone = document.getElementById("custPhone").value;
+            localStorage.setItem("em6_cust_name", name);
+            localStorage.setItem("em6_cust_phone", phone);
         }
 
         function loadSavedCustomerInfo() {
-            const savedName = localStorage.getItem("em6_custName");
-            const savedPhone = localStorage.getItem("em6_custPhone");
-            if (savedName) document.getElementById("custName").value = savedName;
-            if (savedPhone) document.getElementById("custPhone").value = savedPhone;
+            if (localStorage.getItem("em6_cust_name")) {
+                document.getElementById("custName").value = localStorage.getItem("em6_cust_name");
+            }
+            if (localStorage.getItem("em6_cust_phone")) {
+                document.getElementById("custPhone").value = localStorage.getItem("em6_cust_phone");
+            }
         }
 
         function generateReceipt() {
@@ -748,35 +729,39 @@
             const phone = document.getElementById("custPhone").value.trim();
             const date = document.getElementById("bookingDate").value;
 
-            if (!name || !phone) {
-                alert("Sila masukkan Nama Penuh dan Nombor WhatsApp anda.");
+            if (!date || selectedSlots.length === 0) {
+                alert("Sila pilih tarikh dan sekurang-kurangnya satu slot gelanggang.");
                 return;
             }
-            if (selectedSlots.length === 0) {
-                alert("Sila pilih sekurang-kurangnya satu slot gelanggang.");
+            if (!name || !phone) {
+                alert("Sila masukkan Nama Penuh dan Nombor WhatsApp anda.");
                 return;
             }
 
             const refId = "EM6-" + Math.floor(100000 + Math.random() * 900000);
             currentGeneratedRef = refId;
 
+            const paymentMethod = document.getElementById("paymentMethod").value;
+            const totalAmount = document.getElementById("totalPriceDisplay").innerText;
+
+            if (!allBookings[date]) {
+                allBookings[date] = {};
+            }
+
             selectedSlots.forEach(s => {
-                const slotKey = `${date}_${s.courtId}_${s.startHour}`;
-                allBookings[slotKey] = {
+                const key = `${s.courtId}_${s.startHour}`;
+                allBookings[date][key] = {
                     refId,
                     name,
                     phone,
-                    date,
-                    courtId: s.courtId,
-                    courtName: s.courtName,
-                    displayTime: s.displayTime,
-                    status: "Pending"
+                    totalAmount,
+                    status: 'confirmed'
                 };
             });
 
             saveToLocalStorage("bookings/all", allBookings, () => {
                 document.getElementById("refNo").innerText = `Ref ID: ${refId}`;
-                document.getElementById("receiptSection").classList.remove("hidden");
+                document.getElementById("payMethodDisplay").innerText = paymentMethod.toUpperCase();
                 
                 document.getElementById("qrcode").innerHTML = "";
                 new QRCode(document.getElementById("qrcode"), {
@@ -785,7 +770,9 @@
                     height: 120
                 });
 
+                document.getElementById("receiptSection").classList.remove("hidden");
                 document.getElementById("receiptSection").scrollIntoView({ behavior: 'smooth' });
+                
                 renderCourtGrid();
                 renderAdminBookings();
             });
@@ -793,34 +780,24 @@
 
         function sendToWhatsappOwner() {
             const name = document.getElementById("custName").value;
-            const phone = document.getElementById("custPhone").value;
             const date = document.getElementById("bookingDate").value;
             const total = document.getElementById("totalPriceDisplay").innerText;
-            const method = document.getElementById("paymentMethod").value;
+            
+            let slotsDesc = selectedSlots.map(s => {
+              const c = COURTS_DATA.find(x => x.id === s.courtId);
+              return `- ${c ? c.name : s.courtId} (${s.displayTime})`;
+            }).join('\n');
 
-            let slotsSummary = selectedSlots.map(s => `\n- ${s.courtName} (${s.displayTime})`).join("");
-
-            const message = `*TEMPAHAN BARU EM6 ARENA* 🎾%0A` +
-                `-----------------------------------%0A` +
-                `*Ref ID:* ${currentGeneratedRef}%0A` +
-                `*Nama:* ${name}%0A` +
-                `*Telefon:* ${phone}%0A` +
-                `*Tarikh:* ${date}%0A` +
-                `*Slot:* ${slotsSummary}%0A` +
-                `-----------------------------------%0A` +
-                `*Jumlah Bayaran:* ${total}%0A` +
-                `*Kaedah:* ${method.toUpperCase()}%0A` +
-                `*Status:* Menunggu Pengesahan Owner%0A%0A` +
-                `Sila semak resit pembayaran saya. Terima kasih!`;
-
+            const message = `*TEMPAHAN BARU EM6 ARENA*%0A%0A*Ref ID:* ${currentGeneratedRef}%0A*Tarikh:* ${date}%0A*Nama:* ${name}%0A*Slot:*%0A${slotsDesc}%0A%0A*Jumlah Bayaran:* ${total}%0A%0A(Sertakan resit pembayaran di sini untuk pengesahan)`;
             window.open(`https://wa.me/${OWNER_WHATSAPP}?text=${message}`, '_blank');
         }
 
+        // Admin functions
         function openAdminModal() {
             const pin = prompt("Masukkan PIN Owner:");
             if (pin === settings.ownerPin) {
                 document.getElementById("adminModal").classList.remove("hidden");
-                loadSettingsIntoForm();
+                populateAdminSettings();
                 renderAdminBookings();
             } else if (pin !== null) {
                 alert("PIN salah!");
@@ -840,33 +817,33 @@
             document.getElementById(`tab${tabName.charAt(0).toUpperCase() + tabName.slice(1)}Btn`).className = "py-2.5 px-3 font-bold border-b-2 border-amber-500 text-amber-500";
         }
 
-        function loadSettingsIntoForm() {
+        function populateAdminSettings() {
             document.getElementById("settingOffPeak").value = settings.offpeakPrice;
             document.getElementById("settingPeak").value = settings.peakPrice;
             document.getElementById("settingPaddle").value = settings.paddlePrice;
             document.getElementById("settingBallStd").value = settings.ballStdPrice;
             document.getElementById("settingBallPrem").value = settings.ballPremPrice;
-            
+
             document.getElementById("settingBankName").value = settings.bankName;
             document.getElementById("settingBankAccNo").value = settings.bankAccNo;
             document.getElementById("settingBankAccName").value = settings.bankAccName;
             document.getElementById("settingDuitNowQrImg").value = settings.duitNowQrImg;
-            
+
             document.getElementById("settingTngAccNo").value = settings.tngAccNo;
             document.getElementById("settingTngAccName").value = settings.tngAccName;
             document.getElementById("settingTngQr").value = settings.tngQrImg;
 
-            document.getElementById("court1Active").checked = settings.court1Active;
-            document.getElementById("court2Active").checked = settings.court2Active;
-            document.getElementById("court3Active").checked = settings.court3Active;
+            document.getElementById("court1Active").checked = settings.court1Active !== false;
+            document.getElementById("court2Active").checked = settings.court2Active !== false;
+            document.getElementById("court3Active").checked = settings.court3Active !== false;
         }
 
         function saveSettings() {
-            settings.offpeakPrice = parseFloat(document.getElementById("settingOffPeak").value) || 30;
-            settings.peakPrice = parseFloat(document.getElementById("settingPeak").value) || 40;
-            settings.paddlePrice = parseFloat(document.getElementById("settingPaddle").value) || 5;
-            settings.ballStdPrice = parseFloat(document.getElementById("settingBallStd").value) || 5;
-            settings.ballPremPrice = parseFloat(document.getElementById("settingBallPrem").value) || 19;
+            settings.offpeakPrice = parseFloat(document.getElementById("settingOffPeak").value) || 0;
+            settings.peakPrice = parseFloat(document.getElementById("settingPeak").value) || 0;
+            settings.paddlePrice = parseFloat(document.getElementById("settingPaddle").value) || 0;
+            settings.ballStdPrice = parseFloat(document.getElementById("settingBallStd").value) || 0;
+            settings.ballPremPrice = parseFloat(document.getElementById("settingBallPrem").value) || 0;
 
             settings.bankName = document.getElementById("settingBankName").value;
             settings.bankAccNo = document.getElementById("settingBankAccNo").value;
@@ -889,68 +866,63 @@
             });
         }
 
+        function updateUIWithSettings() {
+            document.getElementById("labelPaddle").innerText = settings.paddlePrice.toFixed(2);
+            document.getElementById("labelBallStd").innerText = settings.ballStdPrice.toFixed(2);
+            document.getElementById("labelBallPrem").innerText = settings.ballPremPrice.toFixed(2);
+            togglePaymentQR();
+        }
+
         function renderAdminBookings() {
             const tbody = document.getElementById("bookingHistoryTable");
             tbody.innerHTML = "";
 
             let totalRev = 0;
-            let count = 0;
-            const keys = Object.keys(allBookings);
+            let totalCount = 0;
+            let hasData = false;
 
-            if (keys.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-slate-500">Tiada rekod tempahan lagi.</td></tr>`;
-                document.getElementById("totalRevenue").innerText = "RM 0.00";
-                document.getElementById("bookingCount").innerText = "0";
-                return;
+            for (let date in allBookings) {
+                for (let key in allBookings[date]) {
+                    hasData = true;
+                    const b = allBookings[date][key];
+                    totalCount++;
+                    
+                    const cleanAmt = parseFloat(b.totalAmount.replace('RM', '')) || 0;
+                    totalRev += cleanAmt;
+
+                    const tr = document.createElement("tr");
+                    tr.className = "border-b border-slate-900";
+                    tr.innerHTML = `
+                        <td class="p-2 font-mono">${b.refId}<br><span class="text-[9px] text-slate-500">${date}</span></td>
+                        <td class="p-2">${b.name}<br><span class="text-[9px] text-slate-400">${b.phone}</span></td>
+                        <td class="p-2 font-bold text-emerald-400">${b.totalAmount}</td>
+                        <td class="p-2 text-center"><span class="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[9px]">Selesai</span></td>
+                        <td class="p-2 text-center">
+                            <button onclick="deleteBooking('${date}', '${key}')" class="px-2 py-1 bg-red-900/40 text-red-400 rounded hover:bg-red-900 text-[10px]">Padam</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                }
             }
 
-            const uniqueRefs = {};
-            keys.forEach(k => {
-                const b = allBookings[k];
-                if (!uniqueRefs[b.refId]) {
-                    uniqueRefs[b.refId] = { ...b, slots: [] };
-                }
-                uniqueRefs[b.refId].slots.push(b);
-            });
-
-            Object.values(uniqueRefs).forEach(b => {
-                count++;
-                if (b.status !== "Cancelled") totalRev += settings.offpeakPrice;
-
-                const tr = document.createElement("tr");
-                tr.className = "border-b border-slate-800/60 hover:bg-slate-900/50";
-                tr.innerHTML = `
-                    <td class="p-2 font-mono text-amber-400">${b.refId}</td>
-                    <td class="p-2">
-                        <div class="font-bold text-slate-200">${b.name}</div>
-                        <div class="text-[9px] text-slate-400">${b.phone} (${b.date})</div>
-                    </td>
-                    <td class="p-2 font-bold text-emerald-400">Slot (${b.slots.length}j)</td>
-                    <td class="p-2 text-center">
-                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${b.status === 'Confirmed' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'}">${b.status}</span>
-                    </td>
-                    <td class="p-2 text-center space-x-1">
-                        <button onclick="updateBookingStatus('${b.refId}', 'Confirmed')" class="px-2 py-1 bg-emerald-600 text-white rounded font-bold text-[10px]">Sah</button>
-                        <button onclick="updateBookingStatus('${b.refId}', 'Cancelled')" class="px-2 py-1 bg-rose-600 text-white rounded font-bold text-[10px]">Batal</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+            if (!hasData) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500 italic">Tiada rekod tempahan lagi.</td></tr>`;
+            }
 
             document.getElementById("totalRevenue").innerText = `RM ${totalRev.toFixed(2)}`;
-            document.getElementById("bookingCount").innerText = count;
+            document.getElementById("bookingCount").innerText = totalCount;
         }
 
-        function updateBookingStatus(refId, newStatus) {
-            Object.keys(allBookings).forEach(k => {
-                if (allBookings[k].refId === refId) {
-                    allBookings[k].status = newStatus;
+        function deleteBooking(date, key) {
+            if (confirm("Adakah anda pasti mahu memadam slot tempahan ini?")) {
+                if (allBookings[date] && allBookings[date][key]) {
+                    delete allBookings[date][key];
+                    saveToLocalStorage("bookings/all", allBookings, () => {
+                        renderCourtGrid();
+                        renderAdminBookings();
+                    });
                 }
-            });
-            saveToLocalStorage("bookings/all", allBookings, () => {
-                renderAdminBookings();
-                renderCourtGrid();
-            });
+            }
         }
     </script>
 </body>
