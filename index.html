@@ -5,16 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>EM6 Pickleball Arena</title>
 
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#0f172a">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="EM6 Arena">
-
-    <!-- Web App Manifest Dynamic Link -->
-    <link rel="manifest" id="manifestLink">
-
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -29,7 +19,7 @@
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen pb-12 select-none">
 
-    <!-- APP HEADER WITH EM6 LOGO & INSTALL BUTTON -->
+    <!-- APP HEADER -->
     <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 shadow-lg">
         <div class="max-w-md mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
@@ -41,17 +31,13 @@
                 <div>
                     <h1 class="font-black text-base tracking-wider text-amber-400 leading-tight">EM6 ARENA</h1>
                     <div class="flex items-center gap-1.5 text-[10px]">
-                        <span id="syncStatus" class="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
-                        <span id="syncText" class="text-slate-400 font-medium">Sistem Aktif & Stabil</span>
+                        <span class="inline-block w-2 h-2 bg-emerald-500 rounded-full"></span>
+                        <span class="text-slate-400 font-medium">Sistem Tempahan Aktif</span>
                     </div>
                 </div>
             </div>
             
             <div class="flex items-center gap-2">
-                <button id="installAppBtn" onclick="installPWA()" class="hidden px-2.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 active:scale-95 text-slate-950 rounded-xl text-xs font-black shadow-md transition flex items-center gap-1">
-                    <span>📲</span> <span>Muat Turun</span>
-                </button>
-
                 <button onclick="openAdminModal()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 border border-slate-700 text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1">
                     ⚙️ <span>Owner</span>
                 </button>
@@ -65,7 +51,7 @@
         <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md space-y-3">
             <div class="flex justify-between items-center">
                 <h2 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <span>📅</span> 1. Pilih Tarikh (Klik Sahaja)
+                    <span>📅</span> 1. Pilih Tarikh
                 </h2>
                 <span id="selectedDateBadge" class="text-[10px] font-bold text-slate-300 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700"></span>
             </div>
@@ -371,59 +357,6 @@
 
     <!-- MAIN JAVASCRIPT -->
     <script>
-        // Dynamic PWA Manifest Setup
-        (function initDynamicPWA() {
-            const manifestData = {
-                "name": "EM6 Pickleball Arena",
-                "short_name": "EM6 Pickleball Arena",
-                "start_url": "./",
-                "display": "standalone",
-                "background_color": "#0f172a",
-                "theme_color": "#0f172a",
-                "orientation": "portrait",
-                "icons": [{
-                    "src": "logo-em6.png",
-                    "sizes": "192x192 512x512",
-                    "type": "image/png"
-                }]
-            };
-            const blob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
-            document.getElementById('manifestLink').setAttribute('href', URL.createObjectURL(blob));
-        })();
-
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            const installBtn = document.getElementById('installAppBtn');
-            if (installBtn) installBtn.classList.remove('hidden');
-        });
-
-        async function installPWA() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    console.log('Pengguna bersetuju memuat turun aplikasi.');
-                }
-                deferredPrompt = null;
-                document.getElementById('installAppBtn').classList.add('hidden');
-            } else {
-                alert("Untuk peranti iOS/Safari: Tekan butang 'Share' dan pilih 'Add to Home Screen'.");
-            }
-        }
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                const swCode = `
-                    self.addEventListener('install', e => e.waitUntil(self.skipWaiting()));
-                    self.addEventListener('fetch', e => e.respondWith(fetch(e.request)));
-                `;
-                const blob = new Blob([swCode], { type: 'text/javascript' });
-                navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(err => console.log('SW Error:', err));
-            });
-        }
-
         const OWNER_WHATSAPP = "60179610108"; 
 
         const COURTS_DATA = [
